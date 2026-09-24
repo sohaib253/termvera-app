@@ -1,0 +1,54 @@
+# Not the tested local dev path yet (Docker wasn't available in the
+# original dev environment — see docs/architecture.md). Kept current so
+# the team can switch to it once Docker is available; apps/api's own
+# venv + a native Postgres install is what's actually verified today.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tenderguard
+      POSTGRES_PASSWORD: tenderguard
+      POSTGRES_DB: tenderguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tenderguard"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./apps/api
+    env_file:
+      - ./apps/api/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://tenderguard:tenderguard@postgres:5432/tenderguard
+      # ClauseRisk's default Ollama provider expects a reachable local
+      # server; "localhost" inside this container isn't the host machine.
+      # Override to host.docker.internal (or a containerized Ollama
+      # service, not set up here) once this compose path is actually used.
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

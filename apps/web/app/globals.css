@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f8fa;
+  --surface: #ffffff;
+  --foreground: #111827;
+  --muted-foreground: #6b7280;
+  --border: #e5e7eb;
+
+  --primary: #4338ca;
+  --primary-foreground: #ffffff;
+  --primary-hover: #3730a3;
+
+  /* Status + severity palette.
+     Deliberately no amber/yellow: severity is communicated by weight
+     (solid fill for critical, outlined for high) within one red family,
+     with indigo/teal/slate carrying the non-risk states. A yellow "high"
+     chip next to an orange "warning" chip reads as a traffic light and
+     makes everything mid-scale look equally urgent. */
+  --status-critical-bg: #fff1f2;
+  --status-critical-fg: #9f1239;
+  --status-critical-border: #fecdd3;
+
+  /* "attention": in progress, needs a look, not yet a risk */
+  --status-warning-bg: #f5f3ff;
+  --status-warning-fg: #6d28d9;
+  --status-warning-border: #ddd6fe;
+
+  --status-success-bg: #f0fdfa;
+  --status-success-fg: #0f766e;
+  --status-success-border: #99f6e4;
+
+  --status-neutral-bg: #f1f5f9;
+  --status-neutral-fg: #475569;
+  --status-neutral-border: #e2e8f0;
+
+  /* Risk severity ramp: fill weight, not hue rotation. */
+  --severity-critical-bg: #9f1239;
+  --severity-critical-fg: #ffffff;
+  --severity-critical-border: #9f1239;
+
+  --severity-high-bg: #fff1f2;
+  --severity-high-fg: #be123c;
+  --severity-high-border: #fda4af;
+
+  --severity-medium-bg: #eef2ff;
+  --severity-medium-fg: #4338ca;
+  --severity-medium-border: #c7d2fe;
+
+  --severity-low-bg: #f1f5f9;
+  --severity-low-fg: #475569;
+  --severity-low-border: #e2e8f0;
+
+  --severity-info-bg: transparent;
+  --severity-info-fg: #94a3b8;
+  --severity-info-border: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .status-critical {
+    background: var(--status-critical-bg);
+    color: var(--status-critical-fg);
+    border-color: var(--status-critical-border);
+  }
+  .status-warning {
+    background: var(--status-warning-bg);
+    color: var(--status-warning-fg);
+    border-color: var(--status-warning-border);
+  }
+  .status-success {
+    background: var(--status-success-bg);
+    color: var(--status-success-fg);
+    border-color: var(--status-success-border);
+  }
+  .status-neutral {
+    background: var(--status-neutral-bg);
+    color: var(--status-neutral-fg);
+    border-color: var(--status-neutral-border);
+  }
+  .severity-critical {
+    background: var(--severity-critical-bg);
+    color: var(--severity-critical-fg);
+    border-color: var(--severity-critical-border);
+  }
+  .severity-high {
+    background: var(--severity-high-bg);
+    color: var(--severity-high-fg);
+    border-color: var(--severity-high-border);
+  }
+  .severity-medium {
+    background: var(--severity-medium-bg);
+    color: var(--severity-medium-fg);
+    border-color: var(--severity-medium-border);
+  }
+  .severity-low {
+    background: var(--severity-low-bg);
+    color: var(--severity-low-fg);
+    border-color: var(--severity-low-border);
+  }
+  .severity-info {
+    background: var(--severity-info-bg);
+    color: var(--severity-info-fg);
+    border-color: var(--severity-info-border);
+  }
+}
