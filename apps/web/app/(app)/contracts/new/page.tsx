@@ -263,8 +263,8 @@ export default function NewContractReviewPage() {
               <span>
                 <span className="font-medium text-foreground">Start risk analysis immediately</span>
                 <span className="block text-xs text-muted-foreground">
-                  Analysis runs in the background. With a local model it can take several minutes
-                  per contract; you can leave the page.
+                  Runs in the background with the built-in analysis engine and usually finishes
+                  within seconds.
                 </span>
               </span>
             </label>

@@ -24,8 +24,8 @@ filterable compliance workspace with human review/override and audit
 trail, and Excel export. ClauseRisk covers contract ingestion, clause
 segmentation and AI extraction, cross-clause linking, deterministic risk
 scoring, a risk register, contract comparison, and Excel risk reports —
-running by default against a **local Ollama model** (no API key
-required), verified live end-to-end (see `docs/ai-evaluation.md`). Both
+running by default on a **built-in rule-based analysis engine** with no
+external AI, API key, or GPU (see `docs/ai-evaluation.md`). Both
 modules share one licensing/usage-limit fixture (`docs/licensing.md`).
 Not production ready — no security review, no TLS, no payment
 integration, no desktop build yet. See `docs/architecture.md` for the

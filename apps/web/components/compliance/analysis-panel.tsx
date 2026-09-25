@@ -60,8 +60,8 @@ export function AnalysisPanel({ project }: { project: Project }) {
           </p>
           {status?.analysis_status === "processing" && (
             <p className="text-sm text-muted-foreground">
-              Extracting requirements and matching evidence — this can take a few minutes
-              depending on document size and AI provider latency.
+              Extracting requirements and checking the bid against each one. This usually
+              finishes within seconds.
             </p>
           )}
         </div>

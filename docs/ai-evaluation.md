@@ -1,5 +1,50 @@
 # AI evaluation (current state)
 
+## Default engine: the built-in brain (no external AI)
+
+Both modules now default to a deterministic expert engine in
+`apps/api/app/services/brain/` (`TENDERGUARD_AI_PROVIDER=brain`,
+`CLAUSERISK_AI_PROVIDER=brain`). It calls no model and no API and needs no
+GPU, so it runs on any host, including free tiers. Claude and Ollama
+remain selectable through the same provider protocol.
+
+**What it is:** a knowledge base written from the contractor's side of the
+table (`contract_kb.py`: 91 risk rules across 81 clause types and 79 risk
+types, plus 17 contract-wide "missing protection" checks; `tender_kb.py`:
+requirement language, categories, and anchor concepts), driven by a
+reasoning layer (`text.py`) that reads numbers with their units and
+comparators ("not less than USD 10,000,000", "exceeds 0.50 ... shall not be
+considered"), tells a look-back window ("within the last 5 years") from a
+figure to match, detects hedged or prospective language ("working
+towards", "on request"), and detects qualifications ("proposes", "requests
+that ... be amended").
+
+**Measured on the sample documents** (`tests/test_brain.py`):
+
+| | Local LLM (mistral 7B) | Brain |
+|---|---|---|
+| 34-clause contract, end to end | 1 hr 56 min | 2.4 s (live server) |
+| Distinct risk types in findings | collapsed (41 of 61 on one type) | 44 |
+| Citations failing verbatim check | some, kept but flagged | 0 |
+| Tender assessments matching the expert fixtures | not measured | 15 of 15 |
+| Unchanged clause flagged as modified in comparison | yes (8.2) | no |
+
+It also makes distinctions experienced bid teams make and a naive keyword
+match wouldn't: a procedural instruction (submission deadline) is marked
+pending verification rather than failed; a contract-stage obligation
+(incident reporting during the works) isn't treated as a bid gap; a bid
+that proposes a different payment term is a deviation, not an omission.
+
+**Honest limits:** it only understands drafting it has a rule for. Unusual
+wording for a familiar risk can be missed, and it has no judgement beyond
+its rules. Every finding names its rule (`[rule LIA-05]`) so a miss or a
+false positive can be traced and the rule fixed, and extending coverage
+means adding a rule to the knowledge base, not retraining anything. The
+15/15 agreement is against the same sample documents the rules were tuned
+on; it is a regression guard, not an accuracy claim for unseen contracts.
+Before claiming accuracy on real documents, build a labelled set from real
+tenders and contracts as described below.
+
 ## What has been verified
 
 - **Deterministic validation logic is tested**: the excerpt-verification

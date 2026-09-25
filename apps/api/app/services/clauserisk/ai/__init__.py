@@ -11,6 +11,11 @@ from app.services.clauserisk.ai.provider import AIProvider
 def get_clauserisk_ai_provider() -> AIProvider | None:
     settings = get_settings()
 
+    if settings.clauserisk_ai_provider == "brain":
+        from app.services.clauserisk.ai.brain_provider import ClauseRiskBrainProvider
+
+        return ClauseRiskBrainProvider()
+
     if settings.clauserisk_ai_provider == "ollama":
         from app.services.clauserisk.ai.ollama_provider import OllamaProvider
 

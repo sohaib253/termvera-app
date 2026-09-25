@@ -31,9 +31,13 @@ class AnalysisPreconditionError(Exception):
 
 def get_ai_provider() -> AIProvider | None:
     settings = get_settings()
-    if not settings.anthropic_api_key:
-        return None
-    return ClaudeProvider(api_key=settings.anthropic_api_key, model=settings.anthropic_model)
+    if settings.tenderguard_ai_provider == "claude":
+        if not settings.anthropic_api_key:
+            return None
+        return ClaudeProvider(api_key=settings.anthropic_api_key, model=settings.anthropic_model)
+    from app.services.ai.brain_provider import TenderGuardBrainProvider
+
+    return TenderGuardBrainProvider()
 
 
 def _excerpt_is_verifiable(excerpt: str, page_texts: dict[int, str], page_number: int) -> bool:

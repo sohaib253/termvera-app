@@ -20,10 +20,12 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     anthropic_model: str = "claude-opus-5"
 
-    # ClauseRisk AI provider — "ollama" (local, default) or "claude" (cloud).
-    # No module in app/services/clauserisk may branch on this string itself;
-    # only app/services/clauserisk/ai/__init__.py's factory may.
-    clauserisk_ai_provider: str = "ollama"
+    # Analysis engines. "brain" is the built-in rule-based expert engine
+    # (app/services/brain): no model, no API key, no GPU, runs anywhere.
+    # "claude" and (ClauseRisk only) "ollama" remain available. Only the
+    # factory functions may branch on these strings.
+    tenderguard_ai_provider: str = "brain"
+    clauserisk_ai_provider: str = "brain"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "mistral:7b-instruct"
 

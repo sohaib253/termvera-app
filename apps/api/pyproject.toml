@@ -10,6 +10,13 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.ruff.lint.per-file-ignores]
+# The brain's knowledge bases are data tables of regex patterns and
+# reviewer-facing prose. Wrapping each pattern across lines to satisfy a
+# line limit makes them harder to read and extend, which is their whole job.
+"app/services/brain/contract_kb.py" = ["E501"]
+"app/services/brain/tender_kb.py" = ["E501"]
+
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Form", "fastapi.File"]
 

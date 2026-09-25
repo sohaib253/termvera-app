@@ -137,6 +137,13 @@ def _diff_clause(base: Clause, compared: Clause) -> dict | None:
     if base_dates != compared_dates:
         changes.append(f"dates changed from {sorted(base_dates)} to {sorted(compared_dates)}")
 
+    # Payment days, notice periods, and warranty durations are often the
+    # most consequential edit in an amendment ("30 days" -> "7 days").
+    base_periods = set(base.get_list_field("extracted_time_periods"))
+    compared_periods = set(compared.get_list_field("extracted_time_periods"))
+    if base_periods != compared_periods:
+        changes.append(f"time periods changed from {sorted(base_periods)} to {sorted(compared_periods)}")
+
     base_obligations = set(base.get_list_field("extracted_obligations"))
     compared_obligations = set(compared.get_list_field("extracted_obligations"))
     if base_obligations != compared_obligations:
@@ -153,6 +160,7 @@ def _diff_clause(base: Clause, compared: Clause) -> dict | None:
         base_amounts != compared_amounts
         or base_percentages != compared_percentages
         or base_dates != compared_dates
+        or base_periods != compared_periods
     )
     materiality = "material" if numeric_fields_changed else _materiality_for_category(category)
 

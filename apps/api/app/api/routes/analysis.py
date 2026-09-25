@@ -24,9 +24,8 @@ async def start_analysis(
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail=(
-                "AI provider not configured. Set ANTHROPIC_API_KEY on the API server to "
-                "enable requirement extraction and compliance assessment, or explore the "
-                "sample project instead (see the Demo section)."
+                "TENDERGUARD_AI_PROVIDER is set to claude but ANTHROPIC_API_KEY is not set. "
+                "Set the key, or switch back to the built-in brain engine (the default)."
             ),
         )
 

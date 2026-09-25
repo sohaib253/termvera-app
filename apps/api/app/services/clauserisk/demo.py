@@ -51,7 +51,7 @@ async def _create_and_extract_version(
     if not source_path.exists():
         raise SampleDataMissingError(
             f"{filename} not found in sample_data/. Run "
-            "apps/api/scripts/generate_clauserisk_sample_data.py to create it."
+            "apps/api/scripts/generate_sample_data.py to create it."
         )
     content = source_path.read_bytes()
 
@@ -156,9 +156,9 @@ async def create_demo_contract(
         notes=(
             "This is a fictional sample contract created for demonstration purposes. "
             "It does not describe a real agreement. Click \"Run analysis\" on a version "
-            "to see the real ClauseRisk pipeline (clause segmentation, AI extraction via "
-            "your local Ollama model, cross-clause linking, and deterministic risk "
-            "scoring) run against it."
+            "to see the real ClauseRisk pipeline (clause segmentation, clause "
+            "classification, cross-clause linking, and rule-based risk scoring) run "
+            "against it."
         ),
         is_demo=True,
     )
