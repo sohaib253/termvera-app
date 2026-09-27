@@ -56,7 +56,9 @@ jobs:
 
       - name: Web dependencies
         working-directory: apps/web
-        run: npm ci
+        shell: bash
+        # Same fallback as CI: the lock file misses a few optional packages.
+        run: npm ci || npm install --no-audit --no-fund
 
       - name: Build installer
         shell: pwsh
