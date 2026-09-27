@@ -195,6 +195,9 @@
   .facts dt { font: 500 12px/1.9 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: #8c8eb5; }
   .facts dd { margin: 0; }
   .dl-note { margin-top: 14px; font-size: 13px; color: #a5a7c8; }
+  .safe-note { margin-top: 22px; padding: 14px 16px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); font-size: 13.5px; line-height: 1.55; color: #c9cae3; position: relative; z-index: 1; max-width: 60ch; }
+  .safe-note strong, .safe-note b { color: #fff; }
+  .safe-note ol { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 4px; }
   @media (max-width: 880px) { .download { grid-template-columns: 1fr; } }
 
   /* footer */
@@ -456,6 +459,13 @@
             </a>
           </div>
           <p class="dl-note js-download-note" hidden>The public download opens at launch. To join early access now, contact us below.</p>
+          <div class="safe-note">
+            <p><strong>Windows may warn you.</strong> Termvera is new, so Edge and Windows don't recognise it yet. It's safe to open:</p>
+            <ol>
+              <li>If Edge says it <em>isn't commonly downloaded</em>: point at the download, click <b>&hellip;</b> then <b>Keep</b>, then <b>Show more &rsaquo; Keep anyway</b>.</li>
+              <li>If Windows says <em>Windows protected your PC</em>: click <b>More info</b>, then <b>Run anyway</b>.</li>
+            </ol>
+          </div>
         </div>
         <dl class="facts">
           <dt>Version</dt><dd class="js-version">0.4.0</dd>
@@ -494,13 +504,22 @@
      to the download panel with a "coming at launch" note. */
   const CONFIG = {
     downloadUrl: "https://github.com/sohaib253/termvera/releases/latest/download/Termvera-Setup.exe",
-    version: "0.4.0",
+    version: "0.4.0", // shown until the live version below loads
+    latestRelease: "https://api.github.com/repos/sohaib253/termvera/releases/latest",
   };
 
   (function () {
     document.querySelectorAll(".js-version").forEach((el) => { el.textContent = CONFIG.version; });
     if (CONFIG.downloadUrl) {
       document.querySelectorAll(".js-download").forEach((el) => { el.href = CONFIG.downloadUrl; });
+      // The newest release's version, so a new release needs no site edit.
+      fetch(CONFIG.latestRelease)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((release) => {
+          const v = release && release.tag_name ? release.tag_name.replace(/^v/, "") : null;
+          if (v) document.querySelectorAll(".js-version").forEach((el) => { el.textContent = v; });
+        })
+        .catch(() => {});
     } else {
       const note = document.querySelector(".js-download-note");
       if (note) note.hidden = false;

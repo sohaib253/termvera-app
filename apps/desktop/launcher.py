@@ -118,16 +118,6 @@ class _InstanceLock:
         return True
 
 
-def _wait_for_running_instance(data_dir: Path, seconds: float = 60) -> str | None:
-    deadline = time.monotonic() + seconds
-    while time.monotonic() < deadline:
-        url = _running_instance(data_dir)
-        if url:
-            return url
-        time.sleep(0.5)
-    return None
-
-
 def _redirect_output(data_dir: Path) -> None:
     # A windowed (no-console) build has no stdout/stderr at all; anything
     # that prints would crash. Send it to a file instead.
@@ -237,22 +227,80 @@ def _show_error(message: str) -> None:
         print(message, file=sys.stderr)
 
 
+# Shown the moment the window opens, while the engine starts (3-4 seconds,
+# longer on the first launch after a reboot while Windows scans the app).
+# It polls the local server and switches to the app as soon as it answers.
+_STARTING_PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Termvera</title>
+<style>
+  html,body{height:100%;margin:0;background:#fbfbfd;font-family:"Segoe UI",system-ui,sans-serif;color:#14163a}
+  main{height:100%;display:grid;place-content:center;justify-items:center;gap:18px}
+  svg{width:64px;height:64px}
+  p{margin:0;color:#55587a;font-size:15px}
+  .bar{width:180px;height:4px;border-radius:4px;background:#e8e8f8;overflow:hidden}
+  .bar i{display:block;height:100%;width:40%;border-radius:4px;background:#4b47e0;animation:slide 1.2s ease-in-out infinite}
+  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+</style></head><body><main>
+<svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8.5" fill="#3f3bc4"/><rect x="7" y="7.2" width="18" height="4.2" rx="2.1" fill="#fff"/>
+<path d="M13.9 11.2 L16.2 23.2 L23.6 13.8" fill="none" stroke="#2dd4bf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<p>Starting Termvera&hellip;</p><div class="bar"><i></i></div>
+</main><script>
+  const url = "__URL__";
+  (function poll() {
+    fetch(url + "/health", { mode: "no-cors", cache: "no-store" })
+      .then(() => location.replace(url + "/"))
+      .catch(() => setTimeout(poll, 300));
+  })();
+</script></body></html>"""
+
+# After the last window closes, the server waits this long before stopping,
+# so reopening the app straight away finds it still running.
+_CLOSE_GRACE_SECONDS = 5
+
+
+def _starting_page(data_dir: Path, url: str) -> str:
+    page = data_dir / "starting.html"
+    page.write_text(_STARTING_PAGE.replace("__URL__", url), encoding="utf-8")
+    return page.as_uri()
+
+
+def _join_running_instance(lock: "_InstanceLock", data_dir: Path) -> str | None:
+    """Another copy holds the data folder. Wait until it's answering (then
+    use it) or until it has finished shutting down (then take over)."""
+    deadline = time.monotonic() + 60
+    while time.monotonic() < deadline:
+        url = _running_instance(data_dir)
+        if url:
+            return url
+        if lock.try_acquire():
+            return None
+        time.sleep(0.3)
+    raise TimeoutError
+
+
 def main() -> int:
     bundle = _bundle_dir()
     data_dir = _data_dir()
     _redirect_output(data_dir)
+    show_window = "--no-window" not in sys.argv
 
     lock = _InstanceLock(data_dir / "instance.lock")
     if not lock.try_acquire():
-        # Another copy owns this data folder: it's running, or starting up
-        # right now. Open a window onto it once it answers.
-        existing = _wait_for_running_instance(data_dir)
+        try:
+            existing = _join_running_instance(lock, data_dir)
+        except TimeoutError:
+            _show_error(f"{APP_NAME} is already starting. If no window appears, restart your computer.")
+            return 1
         if existing:
-            if "--no-window" not in sys.argv:
+            if show_window:
                 _open_window(existing, data_dir)
             return 0
-        _show_error(f"{APP_NAME} is already starting. If no window appears, restart your computer.")
-        return 1
+        # The other copy has exited; this one takes over below.
+
+    port = _choose_port()
+    url = f"http://127.0.0.1:{port}"
+    # Open the window straight away on the starting page; it switches to the
+    # app by itself once the server answers.
+    window = _open_window(_starting_page(data_dir, url), data_dir) if show_window else None
 
     _configure_environment(bundle, data_dir)
     try:
@@ -265,15 +313,13 @@ def main() -> int:
 
     from app.main import app
 
-    port = _choose_port()
-    url = f"http://127.0.0.1:{port}"
     server = uvicorn.Server(
         uvicorn.Config(app, host="127.0.0.1", port=port, log_config=None, access_log=False)
     )
     thread = threading.Thread(target=server.run, name="api", daemon=True)
     thread.start()
 
-    deadline = time.monotonic() + 60
+    deadline = time.monotonic() + 90
     while not _healthy(url):
         if not thread.is_alive() or time.monotonic() > deadline:
             _show_error(f"{APP_NAME} could not start.\n\nLogs: {data_dir / 'logs'}")
@@ -281,26 +327,31 @@ def main() -> int:
         time.sleep(0.2)
 
     state = data_dir / "running.json"
-    state.write_text(json.dumps({"url": url, "pid": os.getpid()}), encoding="utf-8")
+    state_text = json.dumps({"url": url, "pid": os.getpid()})
+    state.write_text(state_text, encoding="utf-8")
     try:
-        # --no-window: serve only (automated checks, or a user who prefers
-        # their own browser); runs until the process is stopped.
-        window = None if "--no-window" in sys.argv else _open_window(url, data_dir)
         if window is not None:
             window.wait()
-            # Another launch may have opened more windows onto this
-            # instance through the same profile; keep serving until the
-            # last one closes.
-            while _profile_in_use(data_dir):
-                time.sleep(2)
+            while True:
+                # Keep serving while any app window is open (a second launch
+                # opens more windows onto this server through the profile).
+                while _profile_in_use(data_dir):
+                    time.sleep(2)
+                # Last window closed. Stop advertising the server, but give a
+                # quick reopen a few seconds to find it before shutting down.
+                state.unlink(missing_ok=True)
+                time.sleep(_CLOSE_GRACE_SECONDS)
+                if not _profile_in_use(data_dir):
+                    break
+                state.write_text(state_text, encoding="utf-8")
         else:
             # No window to watch (default-browser fallback or --no-window):
             # keep serving until the process is stopped or the user signs out.
             thread.join()
     finally:
+        state.unlink(missing_ok=True)
         server.should_exit = True
         thread.join(timeout=10)
-        state.unlink(missing_ok=True)
     return 0
 
 
