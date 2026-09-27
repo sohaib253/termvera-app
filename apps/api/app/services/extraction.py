@@ -20,6 +20,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import threading
 from collections.abc import Callable, Iterable
@@ -313,7 +314,7 @@ _RTF_PAGE_MARKER = "TGPAGEBREAKMARKER"
 
 @lru_cache
 def word_available() -> bool:
-    if os.name != "nt":
+    if sys.platform != "win32":
         return False
     import winreg
 

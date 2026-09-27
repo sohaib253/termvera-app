@@ -9,14 +9,14 @@ if Windows is reinstalled, which is when a customer needs a new key anyway.
 """
 
 import hashlib
-import os
+import sys
 import uuid
 from functools import lru_cache
 from pathlib import Path
 
 
 def _os_machine_guid() -> str:
-    if os.name == "nt":
+    if sys.platform == "win32":  # mypy understands this check; os.name it does not
         import winreg
 
         try:
