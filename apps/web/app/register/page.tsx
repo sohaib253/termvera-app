@@ -1,13 +1,14 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ShieldQuestion } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { Logo } from "@/components/brand/logo";
+import { DesktopRedirect } from "@/components/shell/desktop-redirect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,16 +43,16 @@ export default function RegisterPage() {
       await registerAccount(values);
       router.push("/dashboard");
     } catch (err) {
-      setServerError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
+      setServerError(err instanceof ApiError || err instanceof Error ? err.message : "Something went wrong. Please try again.");
     }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-6 flex items-center justify-center gap-2">
-          <ShieldQuestion className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold">TenderGuard</span>
+        <DesktopRedirect />
+        <div className="mb-6 flex justify-center">
+          <Logo />
         </div>
         <div className="rounded-lg border border-[var(--border)] bg-surface p-6 shadow-sm">
           <h1 className="mb-1 text-xl font-semibold text-foreground">Create your account</h1>

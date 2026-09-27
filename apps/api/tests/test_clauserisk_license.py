@@ -39,6 +39,8 @@ async def test_contract_creation_succeeds_when_module_entitled(
 
 async def test_contract_limit_is_enforced(client: AsyncClient, registration_payload):
     headers = await _register_and_get_headers(client, registration_payload)
+    # The small demo-plan caps make limits cheap to hit in a test.
+    await client.patch("/api/license", json={"plan": "demo"}, headers=headers)
     project_response = await client.post("/api/projects", json={"name": "P"}, headers=headers)
     project_id = project_response.json()["id"]
 

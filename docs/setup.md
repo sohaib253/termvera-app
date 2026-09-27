@@ -14,10 +14,25 @@ current dev environment — see `docs/architecture.md` for why the
   project still works fully (it uses precomputed sample data, not a live
   AI call) — only `POST /api/projects/{id}/analysis` on a real project
   requires a key, and returns a clear error if one isn't set.
-- Optional (for OCR fallback on scanned PDFs): a `tesseract` binary on
-  `PATH`. Without it, low-text pages are flagged
-  (`extraction_method: "ocr_unavailable"`) rather than silently treated
-  as empty.
+- **Tesseract OCR**, needed for scanned documents (most signed contracts
+  are scans with no text layer). On Windows, no admin rights needed:
+  download the installer from
+  <https://github.com/tesseract-ocr/tesseract/releases> (or
+  `winget install tesseract-ocr.tesseract` with admin rights) and install
+  it; for a per-user install run it silently with
+  `tesseract-ocr-w64-setup-<version>.exe /S /CurrentUser /D=%LOCALAPPDATA%\Programs\Tesseract-OCR`.
+  It is found on `PATH`, in `Program Files\Tesseract-OCR`, or in
+  `%LOCALAPPDATA%\Programs\Tesseract-OCR`; anywhere else, set
+  `TESSERACT_CMD` in `apps/api/.env`. Without it, scanned pages are
+  flagged (`extraction_method: "ocr_unavailable"`) and a fully scanned
+  document fails extraction with a message saying OCR is missing, rather
+  than being silently treated as empty.
+- Word-family uploads need nothing extra: `.docx`, `.rtf` and `.odt` are
+  read directly in Python. Only legacy `.doc` needs a converter:
+  Microsoft Word if installed, otherwise LibreOffice (found in
+  `Program Files\LibreOffice`, on `PATH`, or via `LIBREOFFICE_PATH`).
+  With neither, a `.doc` upload is refused with a message asking for
+  `.docx` or PDF.
 - Optional, for ClauseRisk contract analysis: a locally running
   [Ollama](https://ollama.com) server with a model pulled — this is the
   default provider (`CLAUSERISK_AI_PROVIDER=ollama`), no API key needed.
@@ -130,9 +145,14 @@ organization, separate nav items ("Contracts", "Risk Register").
    `CLAUSERISK_AI_PROVIDER=claude` and `ANTHROPIC_API_KEY`.
 2. Click **New contract review** (dashboard header or Contracts page) for
    the one-screen flow: pick or create a project, name the contract,
-   upload the PDF, and start analysis. Or click "Try the sample contract"
+   drag in the contract (PDF, scanned PDF, Word, RTF, ODT, TXT, or a
+   scanned image), and start analysis. Or click "Try the sample contract"
    to load the fictional offshore services agreement and its amendment.
-3. Upload a contract PDF as a version, then click "Run analysis" — this
+   A contract can also be added straight from a project's Contracts
+   section, or attached while creating the project. Analysis requested at
+   upload waits for text extraction and then starts by itself; scanned
+   pages are OCR'd at roughly 1 second per page, with page progress shown.
+3. Upload a contract document as a version, then click "Run analysis" — this
    calls the real pipeline (segmentation → AI clause extraction →
    cross-clause linking → AI risk analysis → deterministic scoring). With
    a local 7B Ollama model, expect roughly 60-90 seconds per clause (two
@@ -147,6 +167,17 @@ organization, separate nav items ("Contracts", "Risk Register").
 5. Export a risk report from a version detail page (Excel, multiple
    sheets — executive summary, clause risk register, commercial/liability
    summaries, negotiation issues, assumptions & limitations).
+
+## 6. Desktop (offline) installer
+
+A single Windows installer that bundles the whole app for use on one
+laptop with no internet connection and no other software installed. See
+[`apps/desktop/README.md`](../apps/desktop/README.md) to build it.
+
+The web app is a static export (`output: "export"` in
+`apps/web/next.config.ts`), so record pages take their IDs from the query
+string (`/contracts/view?id=…`, built by `apps/web/lib/routes.ts`) rather
+than the path. `npm run dev` works as before.
 
 ## Known limitations at this milestone
 
@@ -165,8 +196,13 @@ organization, separate nav items ("Contracts", "Risk Register").
   project/version's findings — both pipelines regenerate from scratch
   rather than keeping versioned analysis-run history (see
   `docs/architecture.md` §7's regression-fix note).
-- **OCR fallback is architecturally complete but untested** without a
-  `tesseract` install available in this environment.
+- **OCR quality depends on the scan.** Verified on the real scanned
+  contracts under `contracts/` (OGDCL, OMV, POL, PPL, BP, Eni), including
+  sideways and upside-down pages, which are detected and rotated. Stamps
+  and signatures overlapping text can still leave stray fragments, and
+  handwriting (filled-in dates, initials) is not read reliably. English
+  only by default (`OCR_LANGUAGES`, e.g. `eng+urd` with that language
+  pack installed).
 - Single organization per user is assumed by the "current organization"
   resolution in the JWT (`app/services/auth.py`); the `memberships` table
   already supports multiple organizations per user for when that's needed.

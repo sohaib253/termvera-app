@@ -1,10 +1,10 @@
 import json
 import logging
-from pathlib import Path
 
 import anthropic
 from pydantic import ValidationError
 
+from app.core.paths import PROMPTS_DIR
 from app.schemas.ai import (
     ComplianceAssessmentOutput,
     ExtractedRequirement,
@@ -14,8 +14,6 @@ from app.services.ai.provider import AIProviderError, PageText
 from app.services.ai.schemas_json import COMPLIANCE_ASSESSMENT_SCHEMA, REQUIREMENT_EXTRACTION_SCHEMA
 
 logger = logging.getLogger("tenderguard.ai")
-
-PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent / "prompts"
 
 REQUIREMENT_EXTRACTION_VERSION = "v1"
 COMPLIANCE_ASSESSMENT_VERSION = "v1"

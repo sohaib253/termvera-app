@@ -35,7 +35,15 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    # SQLite (the desktop install) can't ALTER most things in place; batch
+    # mode rebuilds the table instead. New migrations must use
+    # op.batch_alter_table for anything beyond adding a column so they run
+    # on desktop installs too.
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=connection.dialect.name == "sqlite",
+    )
     with context.begin_transaction():
         context.run_migrations()
 

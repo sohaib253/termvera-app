@@ -1,4 +1,23 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+// "same-origin": the API serves this web app itself (the desktop build), so
+// requests are relative. It has to be a word: Next.js doesn't inline an
+// empty NEXT_PUBLIC_ value, so "" silently fell back to the dev default
+// below, and the installed app sent every request to a server that wasn't
+// there.
+const CONFIGURED_API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = CONFIGURED_API_BASE === "same-origin" ? "" : CONFIGURED_API_BASE;
+
+/** A request that never got a response: server not running, wrong address,
+ *  or no network. Status 0 so callers can tell it apart from an API error. */
+const UNREACHABLE_MESSAGE =
+  "Can't reach the Termvera service. If you're using the desktop app, close it and open it again.";
+
+async function send(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(UNREACHABLE_MESSAGE, 0);
+  }
+}
 
 const ACCESS_TOKEN_KEY = "tenderguard_access_token";
 const REFRESH_TOKEN_KEY = "tenderguard_refresh_token";
@@ -93,7 +112,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const isFormData = body instanceof FormData;
 
   const doFetch = async (): Promise<Response> => {
-    return fetch(`${API_BASE_URL}${path}`, {
+    return send(`${API_BASE_URL}${path}`, {
       method,
       headers: buildHeaders(auth, isFormData),
       body: isFormData ? (body as FormData) : body !== undefined ? JSON.stringify(body) : undefined,
@@ -127,7 +146,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 export async function openDocumentFile(path: string, page?: number): Promise<void> {
   const headers = buildHeaders(true, false);
   delete headers["Content-Type"];
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const response = await send(`${API_BASE_URL}${path}`, { headers });
 
   if (!response.ok) {
     const { message, requestId } = await parseErrorMessage(response);
@@ -142,7 +161,7 @@ export async function openDocumentFile(path: string, page?: number): Promise<voi
 export async function downloadFile(path: string, filenameFallback: string): Promise<void> {
   const headers = buildHeaders(true, false);
   delete headers["Content-Type"];
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const response = await send(`${API_BASE_URL}${path}`, { headers });
 
   if (!response.ok) {
     const { message, requestId } = await parseErrorMessage(response);

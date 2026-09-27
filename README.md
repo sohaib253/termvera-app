@@ -1,13 +1,15 @@
-# TenderGuard
+# Termvera
 
-AI-assisted tender compliance and contract risk software for
-contractors, EPC companies, and bid management teams. Two modules on one
-platform:
+*The truth in every term.* Tender compliance and contract risk software
+for contractors, EPC companies, and bid management teams, running
+entirely on the user's own computer. Two modules on one platform (the
+code still uses their working names, TenderGuard and ClauseRisk, as
+internal identifiers):
 
-- **TenderGuard** (compliance): upload a tender package and a draft bid;
+- **Tender Compliance** (`tenderguard` internally): upload a tender package and a draft bid;
   get an evidence-backed compliance matrix that flags what's missing,
   weak, or ambiguous before submission.
-- **ClauseRisk** (contract risk): upload a contract; get clause-by-clause
+- **Contract Risk** (`clauserisk` internally): upload a contract; get clause-by-clause
   risk analysis (liability, schedule, commercial, termination, and more),
   cross-clause relationships, deterministic risk scoring, and version-to-
   version comparison with a material-changes view.

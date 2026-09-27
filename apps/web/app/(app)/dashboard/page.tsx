@@ -12,6 +12,7 @@ import { RiskSeverityBadge } from "@/components/ui/clauserisk-badge";
 import { cn } from "@/lib/cn";
 import { apiRequest } from "@/lib/api-client";
 import { RISK_SEVERITY_ORDER, type DashboardSummary, type UpcomingDeadline } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export default function DashboardPage() {
   const { data: summary, isLoading } = useQuery({
@@ -144,7 +145,7 @@ function DeadlineRow({ deadline }: { deadline: UpcomingDeadline }) {
   return (
     <li>
       <Link
-        href={`/projects/${deadline.project_id}`}
+        href={routes.project(deadline.project_id)}
         className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-gray-50"
       >
         <div className="min-w-0">
@@ -306,7 +307,7 @@ function EmptyState() {
           <FileSignature className="h-9 w-9 text-muted-foreground" />
           <h3 className="mt-4 text-sm font-semibold text-foreground">Review a contract</h3>
           <p className="mt-1 max-w-xs text-sm text-muted-foreground">
-            Upload a contract PDF to get clause-by-clause risk scoring, cross-clause analysis, and
+            Upload a contract (PDF, scanned PDF, or Word) to get clause-by-clause risk scoring, cross-clause analysis, and
             version comparison.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-3">

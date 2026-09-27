@@ -38,6 +38,11 @@ from app.services.clauserisk.ai import get_clauserisk_ai_provider
 from app.services.clauserisk.ai.prompts import CLAUSE_EXTRACTION_VERSION, RISK_ANALYSIS_VERSION
 from app.services.clauserisk.ai.provider import AIProvider, AIProviderError
 from app.services.clauserisk.cross_links import ClauseForLinking, build_cross_clause_links
+from app.services.clauserisk.evidence_location import (
+    ClauseRef,
+    locate_evidence,
+    printed_page_labels,
+)
 from app.services.clauserisk.risk_categories import category_for_subcategory
 from app.services.clauserisk.risk_engine import compute_risk_score
 from app.services.clauserisk.risk_types import normalize_risk_type
@@ -55,6 +60,7 @@ class AnalysisPreconditionError(Exception):
 
 # Stage labels are shown verbatim to a reviewer waiting on a long run, so
 # they describe what is happening rather than naming internal functions.
+STAGE_READING_TEXT = "Reading document text"
 STAGE_SEGMENTING = "Segmenting clauses"
 STAGE_EXTRACTING = "Extracting clause detail"
 STAGE_LINKING = "Linking related clauses"
@@ -193,6 +199,42 @@ async def run_contract_analysis(contract_version_id: str) -> None:
         await db.commit()
 
 
+def queue_analysis_after_extraction(version: ContractVersion) -> None:
+    """Mark a freshly uploaded version as analysing before its text exists.
+
+    The upload route then schedules run_extraction followed by
+    run_analysis_after_extraction; FastAPI runs a request's background
+    tasks in order, so analysis starts the moment extraction finishes.
+    Showing "processing" from the start means a reviewer who asked for
+    analysis at upload never sees an idle version with a Run button that
+    would only fail while a scan is still being OCR'd."""
+    version.analysis_status = ContractAnalysisStatus.PROCESSING
+    version.analysis_error = None
+    version.analysis_stage = STAGE_READING_TEXT
+    version.analysis_progress_current = 0
+    version.analysis_progress_total = 0
+    version.analysis_started_at = utcnow()
+    version.analysis_completed_at = None
+
+
+async def run_analysis_after_extraction(contract_version_id: str) -> None:
+    async with AsyncSessionLocal() as db:
+        version = await db.get(ContractVersion, contract_version_id)
+        if version is None:
+            return
+        await db.refresh(version, attribute_names=["document"])
+        if version.document.extraction_status != ExtractionStatus.COMPLETED:
+            version.analysis_status = ContractAnalysisStatus.FAILED
+            version.analysis_stage = None
+            reason = version.document.extraction_error or "text extraction did not complete"
+            version.analysis_error = (
+                f"Analysis could not start because the document text could not be read: {reason}"
+            )
+            await db.commit()
+            return
+    await run_contract_analysis(contract_version_id)
+
+
 async def _clear_previous_analysis(db: AsyncSession, *, contract_version_id: str) -> None:
     """Re-running analysis (e.g. the UI's "Re-run analysis" button on an
     already-completed version) regenerates clauses/links/findings from
@@ -329,6 +371,12 @@ async def _run_pipeline(db: AsyncSession, *, provider: AIProvider, contract_vers
 
     await _set_progress(db, version, stage=STAGE_ANALYZING, total=len(clauses))
 
+    page_labels = printed_page_labels(page_texts)
+    clause_refs = {
+        c.id: ClauseRef(c.clause_number, c.title, c.text, c.page_start, c.page_end) for c in clauses
+    }
+    all_clause_refs = list(clause_refs.values())
+
     for index, clause in enumerate(clauses, start=1):
         if clause.extraction_error:
             continue
@@ -389,18 +437,29 @@ async def _run_pipeline(db: AsyncSession, *, provider: AIProvider, contract_vers
                 ai_provider=provider.name,
                 prompt_version=f"{CLAUSE_EXTRACTION_VERSION}/{RISK_ANALYSIS_VERSION}",
             )
-            finding.set_evidence(
-                [
+            evidence: list[dict] = []
+            if verified:
+                where = locate_evidence(
+                    candidate.evidence_excerpt,
+                    home_clause=clause_refs[clause.id],
+                    clauses=all_clause_refs,
+                    pages=page_texts,
+                    labels=page_labels,
+                )
+                evidence.append(
                     {
                         "clause_id": clause.id,
-                        "page": clause.page_start,
+                        "document_id": version.document_id,
+                        "page": where.page,
+                        "page_label": where.page_label,
+                        "clause_number": where.clause_number,
+                        "clause_title": where.clause_title,
+                        "section_title": where.section_title,
                         "excerpt": candidate.evidence_excerpt,
                         "verified": verified,
                     }
-                ]
-                if verified
-                else []
-            )
+                )
+            finding.set_evidence(evidence)
             finding.related_clauses = json.dumps(
                 [rc.clause_number for rc in related_clauses if rc.clause_number]
             )

@@ -10,7 +10,7 @@ import {
 } from "react";
 
 import { apiRequest, clearTokens, getAccessToken, setTokens } from "@/lib/api-client";
-import type { MeResponse } from "@/lib/types";
+import type { DesktopStatus, MeResponse } from "@/lib/types";
 
 interface RegisterInput {
   email: string;
@@ -21,9 +21,24 @@ interface RegisterInput {
   country?: string;
 }
 
+export interface DesktopSetupInput {
+  full_name: string;
+  organization_name: string;
+  email?: string;
+  industry?: string;
+  country?: string;
+}
+
 interface AuthContextValue {
   me: MeResponse | null;
   isLoading: boolean;
+  /** True in the installed desktop app: no login, automatic sign-in. */
+  isDesktop: boolean;
+  /** Desktop app not yet set up (first launch). */
+  desktopSetupRequired: boolean;
+  /** False during free early access: no trial to mention. */
+  billingEnabled: boolean;
+  setupDesktop: (input: DesktopSetupInput) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   logout: () => void;
@@ -40,8 +55,35 @@ interface TokenResponse {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [me, setMe] = useState<MeResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [desktopSetupRequired, setDesktopSetupRequired] = useState(false);
+  const [billingEnabled, setBillingEnabled] = useState(true);
 
   const loadMe = useCallback(async () => {
+    // The desktop app has one local user and no password: sign in
+    // automatically, or report that first-run setup is needed.
+    try {
+      const desktop = await apiRequest<DesktopStatus>("/api/desktop/status", { auth: false });
+      setIsDesktop(desktop.desktop);
+      setDesktopSetupRequired(desktop.setup_required);
+      setBillingEnabled(desktop.billing_enabled ?? true);
+      if (desktop.desktop && desktop.setup_required) {
+        clearTokens();
+        setMe(null);
+        setIsLoading(false);
+        return;
+      }
+      if (desktop.desktop && !getAccessToken()) {
+        const tokens = await apiRequest<TokenResponse>("/api/desktop/session", {
+          method: "POST",
+          auth: false,
+        });
+        setTokens(tokens.access_token, tokens.refresh_token);
+      }
+    } catch {
+      // A server without the desktop routes, or unreachable: carry on with
+      // the normal token check, which reports its own error.
+    }
     if (!getAccessToken()) {
       setMe(null);
       setIsLoading(false);
@@ -91,13 +133,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [loadMe]
   );
 
+  const setupDesktop = useCallback(
+    async (input: DesktopSetupInput) => {
+      const tokens = await apiRequest<TokenResponse>("/api/desktop/setup", {
+        method: "POST",
+        body: input,
+        auth: false,
+      });
+      setTokens(tokens.access_token, tokens.refresh_token);
+      await loadMe();
+    },
+    [loadMe]
+  );
+
   const logout = useCallback(() => {
     clearTokens();
     setMe(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ me, isLoading, login, register, logout, refetchMe: loadMe }}>
+    <AuthContext.Provider
+      value={{
+        me,
+        isLoading,
+        isDesktop,
+        desktopSetupRequired,
+        billingEnabled,
+        setupDesktop,
+        login,
+        register,
+        logout,
+        refetchMe: loadMe,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

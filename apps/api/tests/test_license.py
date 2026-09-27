@@ -10,18 +10,22 @@ async def _register_and_get_headers(client: AsyncClient, payload) -> dict[str, s
     return {"Authorization": f"Bearer {token}"}
 
 
-async def test_default_license_is_demo_plan(client: AsyncClient, registration_payload):
+async def test_new_workspace_starts_a_full_featured_trial(client: AsyncClient, registration_payload):
     headers = await _register_and_get_headers(client, registration_payload)
     response = await client.get("/api/license", headers=headers)
     assert response.status_code == 200
     body = response.json()
-    assert body["plan"] == "demo"
-    assert body["status"] == "active"
-    assert body["project_limit"] == 3
+    assert body["plan"] == "trial"
+    assert body["state"] == "trial"
+    assert body["days_left"] == 14
+    assert body["read_only"] is False
+    assert sorted(body["enabled_modules"]) == ["clauserisk", "tenderguard"]
 
 
 async def test_project_limit_is_enforced(client: AsyncClient, registration_payload):
     headers = await _register_and_get_headers(client, registration_payload)
+    # The small demo-plan caps make limits cheap to hit in a test.
+    await client.patch("/api/license", json={"plan": "demo"}, headers=headers)
 
     for i in range(3):
         response = await client.post(
@@ -43,4 +47,4 @@ async def test_usage_endpoint_reflects_project_count(client: AsyncClient, regist
     assert response.status_code == 200
     body = response.json()
     assert body["projects_used"] == 1
-    assert body["license"]["plan"] == "demo"
+    assert body["license"]["plan"] == "trial"

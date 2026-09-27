@@ -368,3 +368,56 @@ async def test_interrupted_analysis_is_marked_failed_and_can_be_rerun(
     rerun = await client.post(f"/api/contract-versions/{version_id}/analysis", headers=headers)
     assert rerun.status_code == 200
     assert rerun.json()["analysis_status"] == "processing"
+
+
+async def test_upload_with_run_analysis_extracts_then_analyses(
+    client: AsyncClient, registration_payload, clauserisk_fake_provider
+):
+    headers = await _register_and_get_headers(client, registration_payload)
+    project_id = await _create_project(client, headers)
+    contract_id = await _create_contract(client, headers, project_id)
+
+    response = await client.post(
+        f"/api/contracts/{contract_id}/versions",
+        headers=headers,
+        data={"version_label": "Original", "run_analysis": "true"},
+        files={"file": ("contract.pdf", _make_pdf_bytes(SAMPLE_CONTRACT_TEXT), "application/pdf")},
+    )
+    assert response.status_code == 201, response.text
+    # Analysis is queued behind extraction rather than rejected because the
+    # text isn't there yet.
+    assert response.json()["analysis_status"] == "processing"
+    assert response.json()["analysis_stage"] == "Reading document text"
+
+    detail = (await client.get(f"/api/contracts/{contract_id}", headers=headers)).json()
+    version = detail["versions"][0]
+    assert version["document"]["extraction_status"] == "completed"
+    assert version["analysis_status"] == "completed"
+
+
+async def test_queued_analysis_fails_clearly_when_text_cannot_be_read(
+    client: AsyncClient, registration_payload, clauserisk_fake_provider, monkeypatch
+):
+    import app.services.extraction as extraction_module
+
+    monkeypatch.setattr(extraction_module, "ocr_available", lambda: False)
+    headers = await _register_and_get_headers(client, registration_payload)
+    project_id = await _create_project(client, headers)
+    contract_id = await _create_contract(client, headers, project_id)
+
+    blank_scan = fitz.open()
+    blank_scan.new_page()
+    buffer = io.BytesIO()
+    blank_scan.save(buffer)
+
+    await client.post(
+        f"/api/contracts/{contract_id}/versions",
+        headers=headers,
+        data={"version_label": "Original", "run_analysis": "true"},
+        files={"file": ("scan.pdf", buffer.getvalue(), "application/pdf")},
+    )
+
+    version = (await client.get(f"/api/contracts/{contract_id}", headers=headers)).json()["versions"][0]
+    assert version["document"]["extraction_status"] == "failed"
+    assert version["analysis_status"] == "failed"
+    assert "could not be read" in version["analysis_error"]

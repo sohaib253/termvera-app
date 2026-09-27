@@ -78,6 +78,7 @@ export interface TenderDocument {
   page_count: number | null;
   extraction_status: ExtractionStatus;
   extraction_error: string | null;
+  extraction_pages_done: number | null;
   created_at: string;
 }
 
@@ -174,7 +175,7 @@ export interface AnalysisStatusResponse {
   analysis_completed_at: string | null;
 }
 
-export type LicensePlan = "demo" | "trial" | "professional" | "enterprise";
+export type LicensePlan = "free" | "demo" | "trial" | "professional" | "enterprise";
 
 export interface License {
   plan: LicensePlan;
@@ -187,6 +188,36 @@ export interface License {
   monthly_clause_analysis_limit: number;
   enabled_modules: string[];
   expires_at: string | null;
+  state: LicenseState;
+  read_only: boolean;
+  ends_at: string | null;
+  days_left: number | null;
+  licensed_to: string | null;
+  license_id: string | null;
+  /** This computer's ID, for requesting a key bound to this PC. */
+  machine_id: string | null;
+  /** Set when the active key only works on one computer. */
+  bound_machine_id: string | null;
+}
+
+/** trial: free trial running; trial_expired / expired: view-only;
+ *  active: paid up; grace: lapsed but still fully usable for a few days. */
+export type LicenseState =
+  /** Free early access: no countdown, no limits. */
+  | "free"
+  | "trial"
+  | "trial_expired"
+  | "active"
+  | "grace"
+  | "expired"
+  /** A per-PC key, and this workspace was copied to a different PC. */
+  | "other_machine";
+
+export interface DesktopStatus {
+  desktop: boolean;
+  setup_required: boolean;
+  /** False during free early access. */
+  billing_enabled?: boolean;
 }
 
 export interface UpcomingDeadline {
@@ -264,6 +295,17 @@ export interface ContractVersion {
   analysis_progress_current: number;
   analysis_progress_total: number;
   created_at: string;
+  document: ContractVersionDocument | null;
+}
+
+/** The uploaded file behind a contract version, and how far text
+ *  extraction (OCR, for a scan) has got. */
+export interface ContractVersionDocument {
+  original_filename: string;
+  page_count: number | null;
+  extraction_status: ExtractionStatus;
+  extraction_error: string | null;
+  extraction_pages_done: number | null;
 }
 
 export interface ContractDetail extends Contract {
@@ -362,7 +404,13 @@ export type FindingReviewerStatus =
 export interface RiskEvidenceItem {
   document_id: string | null;
   clause_id: string | null;
+  /** Page in the PDF file, as a viewer's page box counts it. */
   page: number | null;
+  /** The page number printed on that page ("7 of 12"), when there is one. */
+  page_label?: string | null;
+  clause_number?: string | null;
+  clause_title?: string | null;
+  section_title?: string | null;
   excerpt: string;
   verified: boolean;
 }

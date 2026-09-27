@@ -4,18 +4,22 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, X } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ProjectStatusBadge } from "@/components/ui/status-badge";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
-import type { Project, ProjectCreateInput } from "@/lib/types";
+import type { Contract, Project, ProjectCreateInput } from "@/lib/types";
+import { nameFromFilename } from "@/lib/upload";
+import { routes } from "@/lib/routes";
 
 /** Days until a deadline, using date-only arithmetic so a submission due
  *  later today reads as "today" rather than a fraction of a day. */
@@ -84,7 +88,9 @@ type FormValues = z.infer<typeof schema>;
 
 export default function ProjectsPage() {
   const [showCreate, setShowCreate] = useState(false);
+  const [contractFile, setContractFile] = useState<File | null>(null);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: projects, isLoading } = useQuery({
     queryKey: ["projects"],
@@ -100,17 +106,54 @@ export default function ProjectsPage() {
 
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // An optional contract document rides along with the new project: the
+  // contract is created from it, uploaded, and queued for risk analysis,
+  // so the project opens with its contract already being read.
   const createMutation = useMutation({
-    mutationFn: (input: ProjectCreateInput) =>
-      apiRequest<Project>("/api/projects", { method: "POST", body: input }),
-    onSuccess: () => {
+    mutationFn: async (input: ProjectCreateInput) => {
+      const project = await apiRequest<Project>("/api/projects", { method: "POST", body: input });
+      if (contractFile) {
+        try {
+          const contract = await apiRequest<Contract>(`/api/projects/${project.id}/contracts`, {
+            method: "POST",
+            body: {
+              name: nameFromFilename(contractFile.name),
+              counterparty_name: input.client_name,
+            },
+          });
+          const formData = new FormData();
+          formData.append("version_label", "Original");
+          formData.append("file", contractFile);
+          formData.append("run_analysis", "true");
+          await apiRequest(`/api/contracts/${contract.id}/versions`, {
+            method: "POST",
+            body: formData,
+          });
+        } catch (err) {
+          const reason = err instanceof ApiError ? err.message : "Upload failed.";
+          throw new Error(
+            `The project was created, but the contract could not be added: ${reason} Open the project to add it from its Contracts section.`
+          );
+        }
+      }
+      return project;
+    },
+    onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["contracts"] });
       setShowCreate(false);
       reset();
       setServerError(null);
+      if (contractFile) {
+        setContractFile(null);
+        router.push(routes.project(project.id));
+      }
     },
     onError: (err) => {
-      setServerError(err instanceof ApiError ? err.message : "Could not create the project.");
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      setServerError(
+        err instanceof ApiError || err instanceof Error ? err.message : "Could not create the project."
+      );
     },
   });
 
@@ -178,6 +221,26 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
+              <div>
+                <Label>Contract document (optional)</Label>
+                <FileDropzone
+                  compact
+                  selected={contractFile}
+                  title="Drag the contract here to add it to this project"
+                  hint="PDF (scanned or digital), Word, RTF, ODT, TXT, or scanned images. It is read and risk-analysed automatically."
+                  onFiles={([file]) => setContractFile(file)}
+                />
+                {contractFile && (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-muted-foreground underline"
+                    onClick={() => setContractFile(null)}
+                  >
+                    Remove file
+                  </button>
+                )}
+              </div>
+
               {serverError && (
                 <p className="rounded-md status-critical border px-3 py-2 text-sm" role="alert">
                   {serverError}
@@ -188,8 +251,12 @@ export default function ProjectsPage() {
                 <Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? "Creating…" : "Create project"}
+                <Button type="submit" disabled={isSubmitting || createMutation.isPending}>
+                  {createMutation.isPending
+                    ? contractFile
+                      ? "Creating and uploading…"
+                      : "Creating…"
+                    : "Create project"}
                 </Button>
               </div>
             </form>
@@ -220,7 +287,7 @@ export default function ProjectsPage() {
                 {projects.map((project) => (
                   <tr key={project.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3">
-                      <Link href={`/projects/${project.id}`} className="font-medium text-primary hover:underline">
+                      <Link href={routes.project(project.id)} className="font-medium text-primary hover:underline">
                         {project.name}
                       </Link>
                     </td>

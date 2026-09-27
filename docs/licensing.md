@@ -1,95 +1,156 @@
-# Licensing (current state)
+# Licensing: trial, license keys, and what is enforced
 
-## What exists today
+## Commercial model
 
-`app/services/license.py` implements `LicenseAccount` / `UsageEvent` as a
-**local development / demo entitlement fixture**:
+| Stage | What the customer gets | How it ends |
+|---|---|---|
+| **Free trial** | Every feature for 14 days (`TRIAL_DAYS`), no card, no sign-up. Starts at first-run setup. Trial limits: 10 projects, 25 contracts, 25 analyses a month. | Workspace becomes **view-only**. |
+| **Subscription** | A signed **license key** sets the plan, seats, modules and paid-up-until date. | 7-day **grace period** (`GRACE_DAYS`), still fully usable, then **view-only**. |
+| **Renewal / upgrade** | A new key replaces the old one (Settings → License). | — |
 
-- Every organization gets a `LicenseAccount` row (plan `demo`) created
-  lazily on first access — no signup flow, no payment.
-- Real enforcement, not just display: `project_limit`,
-  `monthly_document_limit`, and `monthly_analysis_limit` are checked at the
-  point of use (`POST /api/projects`, `POST /api/projects/{id}/documents`,
-  `POST /api/projects/{id}/analysis`) and return `402 Payment Required`
-  with a clear message when exceeded. Usage is recorded in `usage_events`
-  and reset monthly (calendar month boundary).
-- `GET /api/license` and `GET /api/usage` expose plan + current usage;
-  the web app's topbar shows `{plan} plan — {used}/{limit} projects`.
+**View-only** means everything can still be opened, searched and exported,
+but nothing new can be created, uploaded or analysed. Customers are never
+locked out of their own data. This is the Microsoft 365 "reduced
+functionality" pattern, and it keeps renewal conversations friendly.
 
-## Module entitlements (TenderGuard / ClauseRisk)
+Plans (`app/services/license.py::PLAN_PRESETS`):
 
-`LicenseAccount.enabled_modules` is a JSON list (`LicenseModule.TENDERGUARD`
-/ `LicenseModule.CLAUSERISK`) stored on the same row as the usage limits
-above — one licensing system shared by both modules, per the brief's
-requirement. Every demo/local account is provisioned with both modules
-enabled by default (`ALL_MODULES`).
-
-- `app/services/license.py::check_module_entitlement` raises
-  `ModuleNotEntitledError` (→ `403`) when a route's module isn't enabled;
-  every ClauseRisk write route (`contracts.py`'s `_require_clauserisk`
-  helper) checks this before doing anything else.
-- Separate monthly limits for ClauseRisk usage:
-  `monthly_contract_limit` and `monthly_clause_analysis_limit`, enforced
-  the same way as TenderGuard's document/analysis limits (`402 Payment
-  Required` on breach) — contracts and analysis runs don't share a quota
-  with tender projects/documents.
-- **No admin UI to toggle modules yet.** Disabling a module for testing
-  currently means editing the `enabled_modules` column directly (exercised
-  in `tests/test_clauserisk_license.py::test_module_gate_rejects_when_disabled`)
-  — there's no `PATCH /api/license` endpoint. Same "not yet built" caveat
-  as everything else in this document.
-
-## Plans and the admin control
-
-`PATCH /api/license` lets a workspace **owner or admin** (membership role,
-re-checked from the database on every request via `require_admin`) set the
-plan directly. There is no payment provider to buy one from, so pretending
-this is a purchase flow would be dishonest; it is an entitlement control,
-gated on role.
-
-| Plan | Projects | Contracts | Analyses/month |
+| Plan | Projects | Contracts | Analyses / month |
 |---|---|---|---|
-| Demo (default) | 3 | 10 | 10 |
 | Trial | 10 | 25 | 25 |
 | Professional | 100 | 250 | 250 |
 | Enterprise | Unlimited | Unlimited | Unlimited |
 
-"Unlimited" is the sentinel `-1` (`license_service.UNLIMITED`), checked by
-`is_unlimited()` at each limit gate. Usage events are still recorded on an
-unlimited plan: those counts are what a real paid tier would bill on, and
-what the workspace owner sees in Settings. The web app renders `-1` as
-"Unlimited" rather than showing the sentinel.
+`demo` remains for development and tests only.
 
-Admins can also delete a project (`DELETE /api/projects/{id}`), which soft
-deletes the project and stamps its contracts as deleted too, removing the
-whole tree from every list without destroying the underlying audit rows.
+## License keys
 
-## What does NOT exist yet — do not claim otherwise
+Format: `TMV1.<payload>.<signature>`. The payload is base64url JSON
+(licensee, email, plan, seats, modules, issue date, expiry date); the
+signature is Ed25519 over it (`app/services/license_keys.py`).
 
-- **No cryptographic signing or remote validation.** The entitlement is a
-  plain database row an operator with DB access could edit directly.
-  There is no signed license token, no offline grace period, no
-  revocation mechanism.
-- **No payment integration.** No Stripe/payment-provider code exists.
-  `LicensePlan` includes `trial` / `professional` / `enterprise` values in
-  the schema for forward-compatibility, but nothing currently issues or
-  upgrades a plan — every org is `demo` forever until this is built.
-- **No seat/user-limit enforcement** (`seat_limit` is stored but not
-  checked anywhere yet — only project/document/analysis counts are).
-- **No way to invite a second user**, so in practice every workspace has
-  exactly one member, who is its owner and therefore its admin. The
-  role check is real; the role *assignment* has no UI behind it yet.
-- **No desktop licensing story** — irrelevant until Phase 9 (desktop
-  distribution), which has not been started.
+- The app contains only the **public** key, so it verifies keys offline:
+  no license server, nothing sent anywhere, works on air-gapped machines.
+- Keys cannot be forged or edited (for example, changing `seats` breaks the
+  signature). Both are covered by tests.
+- The licensee name is shown in the app ("Professional · licensed to
+  Meridian Energy"), which discourages sharing a key between companies.
+- Winding the system clock back doesn't extend a trial or subscription: each
+  workspace records the latest time it has seen (`clock_high_water`).
 
-## Path to a real licensing system (not yet built)
+### Issuing a key (the simple way)
 
-Per the product brief (§15): a production version needs a
-`LicenseService` abstraction backed by a remote licensing service,
-cryptographically signed license tokens with the private signing key held
-server-side only (never in a desktop client), and a real payment
-provider integration. The current `app/services/license.py` functions
-(`get_or_create_license`, `check_and_report_usage`, `check_project_limit`,
-`get_usage_summary`) are the seam where that would plug in — the call
-sites in the API routes wouldn't need to change, only the implementation
-behind them.
+Double-click **`apps\licensing\License Maker.bat`**. It asks for the
+customer's company, email, subscription length, plan and number of users,
+then prints the key, copies it to the clipboard for your email, and adds a
+row to `%USERPROFILE%\.termvera\issued-licenses.csv` (open it in Excel:
+your register of who has which key until when).
+
+Default practice until online activation exists: **one key per customer
+company, usable on any of their PCs.** The app shows "Licensed to
+<Company>", which is the deterrent against passing it on. Per-PC keys
+(below) are there for customers who ask for them.
+
+### Issuing a key from the command line
+
+```powershell
+cd apps\licensing
+..\api\.venv\Scripts\python.exe termvera_license.py issue `
+    --licensee "Meridian Energy" --email buyer@meridian.com `
+    --plan professional --seats 5 --months 12
+```
+
+Paste the printed `TMV1…` key into the customer's welcome email.
+`inspect <key>` shows what any key grants.
+
+### One key per PC
+
+Each installation shows a **Machine ID** in Settings → License (for
+example `K7QF-2M9X-4HCT-8WPN-B3RD`), derived from the ID Windows assigns
+the computer, so it survives reboots, reinstalls and upgrades. The
+customer sends you the Machine IDs of the PCs they're buying for, and you
+issue one key per PC:
+
+```powershell
+..\api\.venv\Scripts\python.exe termvera_license.py issue `
+    --licensee "Meridian Energy" --months 12 `
+    --machine-id K7QF-2M9X-4HCT-8WPN-B3RD Q2TC-8HWN-3KPM-7RXD-F4JA
+```
+
+A key bound to a PC:
+
+- activates only on that PC; anywhere else it's refused with a message
+  giving that computer's own Machine ID to request a key with;
+- is re-checked continuously, so copying a licensed data folder to another
+  PC makes it view-only there (state `other_machine`).
+
+For a site licence or trial extension, `--count N` issues N unbound keys
+that work on any computer.
+
+### Online activation (design, not built)
+
+Per-PC keys need the customer to send Machine IDs. Online activation does
+the same exchange automatically, which is what makes "buy 5 seats, install
+anywhere" work:
+
+1. The customer buys N seats and receives one **order key** (an unbound
+   key with `seats: N`).
+2. On activation the app sends the order key and its Machine ID to your
+   activation server (for example `https://activate.termvera.app`).
+3. The server checks its database: is the order key genuine and paid, and
+   how many machines already hold a seat? If one is free, it records this
+   Machine ID and returns a **per-PC key**, the exact format above, signed
+   there.
+4. The app activates that per-PC key as usual, verifying it offline with
+   the public key. After activation it never needs the server again (no
+   phoning home), which suits customers' locked-down networks.
+5. "Deactivate this PC" in Settings releases the seat on the server, to
+   move it to a new laptop. Support can also free a seat for a lost machine.
+
+**Where the `.pem` goes:** the private key moves to the activation server
+only (ideally in a cloud key-management service such as AWS KMS or Azure
+Key Vault, which signs without ever revealing the key), and off your
+laptop. The app never has it; it only ever holds the public key. Customers
+on air-gapped networks keep using the manual per-PC flow above.
+
+The server is a small web service (about a day's work): one endpoint, a
+table of (order key, Machine ID, activated at), and the existing signing
+code. Pair it with the store webhook so a purchase creates the order key
+automatically.
+
+### The signing key: protect it
+
+The private key is at `%USERPROFILE%\.termvera\license-signing-key.pem`
+(created by `termvera_license.py keygen`; never in the repository).
+
+- **Anyone holding it can mint valid keys.** Keep it on as few machines as
+  possible, never commit or email it, and never ship it in the app.
+- **Losing it means the installed base can't accept new keys** until an app
+  update ships a new public key. Back it up now, to a password manager or
+  offline media.
+- Its public half is `PUBLIC_KEY_B64` in `app/services/license_keys.py`.
+  Changing that invalidates every key already issued.
+
+## Where it's enforced
+
+Every write path already ran through one of the limit checks in
+`app/services/license.py` (`check_project_limit`, `check_contract_limit`,
+`check_and_report_usage`); each now first calls `_ensure_writable`, which
+raises `WorkspaceReadOnlyError` (HTTP 402, with a message saying the work is
+safe and how to continue) once the trial or subscription has lapsed.
+
+`PATCH /api/license` (an admin picking a plan) works only when
+`ENVIRONMENT=development`. Anywhere else it returns 403, because otherwise
+any customer admin could give themselves Enterprise for free.
+
+## Not built yet
+
+- **Online activation** (designed above). Until it exists, seats are
+  enforced by issuing per-PC keys by hand; unbound keys rely on the
+  licensee name in the app as a deterrent.
+- **Payment integration.** Keys are issued by hand. The natural next step
+  is a store (Paddle, Lemon Squeezy or FastSpring handle global tax as
+  merchant of record) calling a webhook that runs the same signing code and
+  emails the key.
+- **Revocation.** A key is valid until its expiry date. Keep terms to 12
+  months or less so a lapsed or refunded customer ages out.

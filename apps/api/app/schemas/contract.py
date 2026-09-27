@@ -3,6 +3,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.contract import ContractAnalysisStatus, ContractStatus, ContractType
+from app.models.document import ExtractionStatus
 
 
 class ContractCreate(BaseModel):
@@ -22,6 +23,16 @@ class ContractUpdate(BaseModel):
     notes: str | None = None
 
 
+class ContractVersionDocumentRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    original_filename: str
+    page_count: int | None
+    extraction_status: ExtractionStatus
+    extraction_error: str | None
+    extraction_pages_done: int | None
+
+
 class ContractVersionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -38,6 +49,7 @@ class ContractVersionRead(BaseModel):
     analysis_progress_current: int
     analysis_progress_total: int
     created_at: datetime
+    document: ContractVersionDocumentRead | None = None
 
 
 class ContractRead(BaseModel):

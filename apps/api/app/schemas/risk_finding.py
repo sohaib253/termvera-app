@@ -18,7 +18,14 @@ def _parse_json_list(value: object) -> list:
 class EvidenceItem(BaseModel):
     document_id: str | None = None
     clause_id: str | None = None
+    # PDF page (what a viewer's page box shows), and the page number printed
+    # on that page when the document has one ("7 of 12"); they differ when
+    # a cover letter comes first. See clauserisk/evidence_location.py.
     page: int | None = None
+    page_label: str | None = None
+    clause_number: str | None = None
+    clause_title: str | None = None
+    section_title: str | None = None
     excerpt: str
     verified: bool
 

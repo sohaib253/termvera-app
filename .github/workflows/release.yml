@@ -1,0 +1,81 @@
+# Tag a version (git tag v0.4.1 && git push --tags) and this builds the
+# Windows installer and publishes it as a release on the public website
+# repository, where the site's Download button fetches it:
+#   https://github.com/sohaib253/termvera/releases/latest/download/Termvera-Setup.exe
+# The code repository stays private; only the installer is public.
+#
+# Needs the repository secret PUBLIC_REPO_TOKEN: a fine-grained GitHub token
+# with "Contents: read and write" on sohaib253/termvera only.
+name: Release installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build, e.g. 0.4.1"
+        required: true
+
+env:
+  PUBLIC_REPO: sohaib253/termvera
+
+jobs:
+  installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          $v = if ("${{ github.event.inputs.version }}") { "${{ github.event.inputs.version }}" } else { "${{ github.ref_name }}".TrimStart("v") }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Tesseract and Inno Setup
+        shell: pwsh
+        run: |
+          choco install tesseract -y --no-progress
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Python environment
+        shell: pwsh
+        working-directory: apps/api
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python.exe -m pip install --upgrade pip
+          .venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Web dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Build installer
+        shell: pwsh
+        run: apps\desktop\build.ps1 -Version ${{ steps.v.outputs.version }}
+
+      - name: Stable file name for the "latest" download link
+        shell: pwsh
+        run: Copy-Item "build\desktop\installer\Termvera-Setup-${{ steps.v.outputs.version }}.exe" "build\desktop\installer\Termvera-Setup.exe"
+
+      - name: Publish release on the public repository
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: ${{ env.PUBLIC_REPO }}
+          token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          tag_name: v${{ steps.v.outputs.version }}
+          name: Termvera ${{ steps.v.outputs.version }}
+          body: |
+            Termvera ${{ steps.v.outputs.version }} for Windows 10 and 11 (64-bit).
+            Download **Termvera-Setup.exe** and run it; no administrator rights needed.
+          files: |
+            build/desktop/installer/Termvera-Setup.exe
+            build/desktop/installer/Termvera-Setup-${{ steps.v.outputs.version }}.exe

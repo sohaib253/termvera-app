@@ -43,8 +43,9 @@ services:
   web:
     build:
       context: ./apps/web
-    environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      args:
+        # Compiled into the static bundle at build time.
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
     ports:
       - "3000:3000"
     depends_on:

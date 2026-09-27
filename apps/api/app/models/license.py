@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, new_uuid, utcnow
@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
 
 class LicensePlan(str, enum.Enum):
+    # Early access: everything free while billing is switched off
+    # (settings.billing_enabled). See app/services/license.py.
+    FREE = "free"
     DEMO = "demo"
     TRIAL = "trial"
     PROFESSIONAL = "professional"
@@ -37,10 +40,8 @@ class LicenseStatus(str, enum.Enum):
     SUSPENDED = "suspended"
 
 
-# Local development / demo entitlement fixture. NOT a production license
-# enforcement mechanism — see docs/licensing.md. There is no cryptographic
-# signing, remote validation, or payment integration here; every org
-# created locally gets a demo-plan row via `app/services/license.py`.
+# One row per workspace: its plan, limits, modules and, once activated, the
+# signed license key that granted them. See docs/licensing.md.
 class LicenseAccount(TimestampMixin, Base):
     __tablename__ = "license_accounts"
 
@@ -49,8 +50,11 @@ class LicenseAccount(TimestampMixin, Base):
         String(36), ForeignKey("organizations.id"), nullable=False, unique=True
     )
 
+    # New workspaces start on the time-limited trial; see
+    # app/services/license.py::get_entitlement for how plan, trial and
+    # license key combine into what the workspace may do.
     plan: Mapped[LicensePlan] = mapped_column(
-        Enum(LicensePlan, native_enum=False, length=20), default=LicensePlan.DEMO, nullable=False
+        Enum(LicensePlan, native_enum=False, length=20), default=LicensePlan.TRIAL, nullable=False
     )
     status: Mapped[LicenseStatus] = mapped_column(
         Enum(LicenseStatus, native_enum=False, length=20),
@@ -76,6 +80,16 @@ class LicenseAccount(TimestampMixin, Base):
     )
 
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Set by activating a signed license key (app/services/license_keys.py).
+    license_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    license_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    licensee: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    trial_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # The latest time this workspace has seen. Trial and license expiry are
+    # judged against max(now, this), so winding the system clock back
+    # doesn't extend them.
+    clock_high_water: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     organization: Mapped["Organization"] = relationship()
 

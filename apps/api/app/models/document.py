@@ -52,6 +52,9 @@ class Document(TimestampMixin, Base):
         nullable=False,
     )
     extraction_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Pages read so far, against page_count, while extraction is running —
+    # a long scanned contract takes minutes to OCR.
+    extraction_pages_done: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     project: Mapped["Project"] = relationship()
     pages: Mapped[list["DocumentPage"]] = relationship(

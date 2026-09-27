@@ -10,6 +10,7 @@ import { ContractStatusBadge } from "@/components/ui/clauserisk-badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { apiRequest } from "@/lib/api-client";
 import type { ContractListItem } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export default function ContractsPage() {
   const { data: contracts, isLoading } = useQuery({
@@ -46,7 +47,7 @@ export default function ContractsPage() {
               <FileSignature className="h-10 w-10 text-muted-foreground" />
               <h3 className="mt-4 text-sm font-semibold text-foreground">No contracts yet</h3>
               <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                Upload a contract PDF to get clause-by-clause risk scoring, or load the fictional
+                Upload a contract (PDF, scanned PDF, or Word) to get clause-by-clause risk scoring, or load the fictional
                 sample contract to see what a finished review looks like.
               </p>
               <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
@@ -74,7 +75,7 @@ export default function ContractsPage() {
                 {contracts.map((contract) => (
                   <tr key={contract.id} className="hover:bg-gray-50">
                     <td className="px-5 py-3">
-                      <Link href={`/contracts/${contract.id}`} className="font-medium text-primary hover:underline">
+                      <Link href={routes.contract(contract.id)} className="font-medium text-primary hover:underline">
                         {contract.name}
                       </Link>
                     </td>

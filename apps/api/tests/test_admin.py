@@ -19,6 +19,8 @@ async def test_workspace_creator_is_an_admin(client: AsyncClient, registration_p
 
 async def test_admin_can_switch_to_an_unlimited_plan(client: AsyncClient, registration_payload):
     headers = await _register_and_get_headers(client, registration_payload)
+    # The small demo-plan caps make limits cheap to hit in a test.
+    await client.patch("/api/license", json={"plan": "demo"}, headers=headers)
 
     # The demo plan caps projects at 3.
     for i in range(3):
@@ -104,6 +106,8 @@ async def test_admin_can_delete_a_project_and_its_contracts(
 
 async def test_deleting_a_project_frees_its_plan_allowance(client: AsyncClient, registration_payload):
     headers = await _register_and_get_headers(client, registration_payload)
+    # The small demo-plan caps make limits cheap to hit in a test.
+    await client.patch("/api/license", json={"plan": "demo"}, headers=headers)
     ids = []
     for i in range(3):
         ids.append(

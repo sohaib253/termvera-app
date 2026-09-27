@@ -1,0 +1,511 @@
+<title>Termvera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Termvera website. A committed light design; every colour is painted
+     explicitly so it reads the same on any host. The download button's
+     address is in CONFIG at the bottom of the page.
+     All example contract content here is fictional. */
+  :root {
+    --bg: #fbfbfd;
+    --surface: #ffffff;
+    --tint: #f1f1fb;
+    --tint-2: #e8e8f8;
+    --line: #e3e4f0;
+    --text: #14163a;
+    --muted: #55587a;
+    --faint: #8a8ca6;
+    --indigo: #4b47e0;
+    --indigo-deep: #2e2a9c;
+    --teal: #0f8f7e;
+    --teal-bright: #2dd4bf;
+    --red: #e11d48;
+    --paper: #fffefa;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, ui-monospace, monospace;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 400 17px/1.6 var(--body); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid var(--indigo); outline-offset: 3px; border-radius: 8px; }
+  .wrap { max-width: 1180px; margin-inline: auto; padding-inline: 24px; }
+  h1, h2, h3, h4 { font-family: var(--display); letter-spacing: -0.02em; text-wrap: balance; margin: 0; }
+  h2 { font-size: clamp(32px, 4.4vw, 52px); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em; }
+  h3 { font-size: 21px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+  p { margin: 0; }
+  .eyebrow { font: 500 12px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--indigo); }
+  .lede { color: var(--muted); font-size: 19px; max-width: 58ch; }
+  section { padding-block: clamp(72px, 10vw, 128px); }
+  .head { display: grid; gap: 16px; max-width: 760px; margin-bottom: 52px; }
+  .head.center { margin-inline: auto; text-align: center; justify-items: center; }
+
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 15px 24px; border-radius: 999px; font: 600 16px/1 var(--body); text-decoration: none; border: 1px solid transparent; transition: transform .15s ease, background .15s ease, box-shadow .15s ease; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn-primary { background: var(--text); color: #fff; box-shadow: 0 10px 24px -12px rgba(20,22,58,.6); }
+  .btn-primary:hover { background: var(--indigo-deep); }
+  .btn-ghost { background: var(--surface); border-color: var(--line); color: var(--text); }
+  .btn-ghost:hover { background: var(--tint); }
+  .btn svg { width: 18px; height: 18px; flex: none; }
+
+  /* nav */
+  .nav { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; background: color-mix(in srgb, var(--bg) 84%, transparent); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .nav .wrap { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 70px; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 700 22px/1 var(--display); letter-spacing: -0.03em; }
+  .brand b { color: var(--indigo); font-weight: 700; }
+  .brand svg { width: 32px; height: 32px; }
+  .nav-links { display: flex; gap: 30px; font-size: 15px; color: var(--muted); }
+  .nav-links a { text-decoration: none; }
+  .nav-links a:hover { color: var(--text); }
+  .nav .btn { padding: 11px 18px; font-size: 14px; }
+  @media (max-width: 880px) { .nav-links { display: none; } }
+
+  /* hero */
+  .hero { padding-block: clamp(64px, 9vw, 112px) 0; text-align: center; overflow: hidden;
+    background: radial-gradient(60% 50% at 50% 0%, var(--tint-2) 0%, rgba(232,232,248,0) 70%), var(--bg); }
+  .hero h1 { font-size: clamp(50px, 8vw, 104px); line-height: 0.98; font-weight: 800; letter-spacing: -0.03em; margin-top: 20px; }
+  .hero h1 span { background: linear-gradient(100deg, var(--indigo) 10%, var(--teal) 90%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero .lede { margin: 26px auto 0; }
+  .cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; margin-top: 36px; }
+  .meta { margin-top: 18px; font: 400 13px/1.5 var(--mono); color: var(--faint); }
+
+  /* product showcase */
+  .showcase { margin-top: clamp(48px, 7vw, 80px); position: relative; }
+  .window { margin-inline: auto; max-width: 1060px; background: var(--surface); border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; box-shadow: 0 -2px 0 var(--tint) inset, 0 40px 90px -40px rgba(46,42,156,.45); text-align: left; overflow: hidden; }
+  .titlebar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fcfcfe; font: 500 12px/1 var(--body); color: var(--faint); }
+  .titlebar i { width: 11px; height: 11px; border-radius: 50%; background: var(--line); display: inline-block; }
+  .titlebar span { margin-left: 10px; }
+  .panes { display: grid; grid-template-columns: 1fr 1.05fr; }
+  .doc-pane { background: var(--tint); padding: 28px 28px 0; border-right: 1px solid var(--line); overflow: hidden; }
+  .page { position: relative; background: var(--paper); border-radius: 3px 3px 0 0; padding: 26px 26px 34px; font: 400 12.5px/1.6 Georgia, "Times New Roman", serif; color: #2b2d45; box-shadow: 0 10px 30px -12px rgba(20,22,58,.25); overflow: hidden; }
+  .page .dochead { font: 600 10.5px/1.3 var(--body); letter-spacing: .08em; text-transform: uppercase; color: #8a8ca6; margin-bottom: 12px; }
+  .page .sec { font-weight: 700; margin: 10px 0 6px; }
+  .page .cl { display: grid; grid-template-columns: 30px 1fr; gap: 6px; margin-bottom: 8px; }
+  .page .mark { background: linear-gradient(transparent 14%, rgba(45,212,191,.34) 14%, rgba(45,212,191,.34) 86%, transparent 86%); }
+  .page .foot { display: flex; justify-content: space-between; margin-top: 12px; font: 400 10px/1 var(--body); color: #9a9cb2; }
+  .stamp { position: absolute; right: 22px; bottom: 30px; width: 84px; height: 84px; border-radius: 50%; border: 2px solid rgba(46,42,156,.45); color: rgba(46,42,156,.55); display: grid; place-items: center; text-align: center; transform: rotate(-14deg); font: 700 8.5px/1.25 var(--body); letter-spacing: .08em; text-transform: uppercase; }
+  .scan { position: absolute; inset-inline: 0; top: 0; height: 56px; pointer-events: none; background: linear-gradient(180deg, rgba(75,71,224,0), rgba(75,71,224,.12) 70%, rgba(75,71,224,.45) 97%, rgba(75,71,224,0)); animation: scan 5.5s cubic-bezier(.6,.05,.4,.95) infinite; }
+  @keyframes scan { 0% { transform: translateY(-56px); } 72%, 100% { transform: translateY(460px); } }
+
+  .find-pane { padding: 24px; display: grid; gap: 12px; align-content: start; }
+  .pane-title { display: flex; justify-content: space-between; align-items: baseline; }
+  .pane-title h4 { font-size: 17px; }
+  .pane-title span { font: 400 12px/1 var(--mono); color: var(--faint); }
+  .fcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; gap: 6px; background: var(--surface); }
+  .fcard.on { border-color: var(--indigo); box-shadow: 0 12px 30px -18px rgba(75,71,224,.7); animation: pin .8s .25s cubic-bezier(.2,.8,.2,1) both; }
+  @keyframes pin { from { transform: translateY(10px); } to { transform: none; } }
+  .fcard .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .fcard strong { font-size: 15px; }
+  .fcard .where { font: 400 12px/1.45 var(--mono); color: var(--teal); }
+  .fcard p { font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+  .sev { font: 600 11px/1 var(--body); padding: 5px 9px; border-radius: 999px; }
+  .sev-critical { background: var(--red); color: #fff; }
+  .sev-high { border: 1px solid #fda4af; color: #be123c; background: #fff1f2; }
+  .sev-medium { border: 1px solid #c7c6ff; color: var(--indigo-deep); background: var(--tint); }
+  .score { margin-left: auto; font: 500 12px/1 var(--mono); color: var(--faint); }
+  @media (max-width: 860px) { .panes { grid-template-columns: 1fr; } .doc-pane { border-right: 0; border-bottom: 1px solid var(--line); } }
+
+  /* audience strip */
+  .audience { border-block: 1px solid var(--line); background: var(--surface); padding-block: 26px; }
+  .audience .wrap { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 36px; font: 500 14px/1.4 var(--body); color: var(--muted); }
+  .audience b { color: var(--text); font-weight: 600; }
+
+  /* figures */
+  .figures { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+  .figures div { padding: 28px 26px; border-right: 1px solid var(--line); }
+  .figures div:last-child { border-right: 0; }
+  .figures dt { font: 800 42px/1 var(--display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--indigo); }
+  .figures dd { margin: 10px 0 0; color: var(--muted); font-size: 14.5px; line-height: 1.45; }
+  @media (max-width: 860px) { .figures { grid-template-columns: 1fr 1fr; } .figures div:nth-child(2) { border-right: 0; } .figures div:nth-child(-n+2) { border-bottom: 1px solid var(--line); } }
+
+  /* tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; display: grid; gap: 12px; align-content: start; }
+  .tile .ico { width: 44px; height: 44px; border-radius: 12px; background: var(--tint); display: grid; place-items: center; color: var(--indigo); }
+  .tile .ico svg { width: 22px; height: 22px; }
+  .tile p { color: var(--muted); font-size: 15.5px; }
+  .tile .spec { font: 400 12.5px/1.5 var(--mono); color: var(--faint); }
+  @media (max-width: 880px) { .tiles { grid-template-columns: 1fr; } }
+
+  /* evidence split */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(32px, 6vw, 80px); align-items: center; }
+  .evidence { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; box-shadow: 0 30px 60px -40px rgba(20,22,58,.35); display: grid; gap: 12px; }
+  .evidence .loc { font-weight: 600; font-size: 15px; }
+  .evidence .pages { font: 400 12.5px/1.5 var(--mono); color: var(--faint); }
+  .evidence blockquote { margin: 0; border-left: 3px solid var(--teal-bright); padding: 4px 0 4px 14px; font: 400 15px/1.6 Georgia, serif; color: #2b2d45; }
+  .evidence .open { justify-self: start; font: 600 13px/1 var(--body); color: var(--indigo); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
+  .ticks { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 12px; }
+  .ticks li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; color: var(--muted); }
+  .ticks svg { width: 20px; height: 20px; color: var(--teal); margin-top: 3px; }
+  @media (max-width: 880px) { .split { grid-template-columns: 1fr; } }
+
+  /* privacy */
+  .privacy { padding-block: 0; }
+  .privacy-panel { background: linear-gradient(135deg, var(--indigo-deep) 0%, var(--indigo) 100%); color: #fff; border-radius: 24px; padding: clamp(36px, 6vw, 72px); display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; align-items: center; }
+  .privacy-panel .eyebrow { color: #b9fff3; }
+  .privacy-panel .lede { color: #dcdbff; }
+  .privacy-panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .privacy-panel li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; font-size: 16px; }
+  .privacy-panel li svg { width: 22px; height: 22px; color: var(--teal-bright); margin-top: 2px; }
+  @media (max-width: 880px) { .privacy-panel { grid-template-columns: 1fr; } }
+
+  /* steps: a real sequence, so numbered */
+  .steps { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 2px solid var(--text); }
+  .step { padding: 26px 24px 8px 0; display: grid; gap: 10px; align-content: start; }
+  .step .n { font: 500 13px/1 var(--mono); color: var(--indigo); }
+  .step p { color: var(--muted); font-size: 15.5px; }
+  @media (max-width: 880px) { .steps { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
+
+  /* checklists */
+  .checks { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .ccard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .ccard header { padding: 20px 24px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .ccard header span { font: 400 13px/1 var(--mono); color: var(--faint); }
+  .rule { padding: 16px 24px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+  .rule:last-child { border-bottom: 0; }
+  .rule .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .rule code { font: 500 12px/1 var(--mono); color: var(--faint); }
+  .rule strong { font-weight: 600; }
+  .rule p { color: var(--muted); font-size: 14.5px; }
+  .areas { display: flex; flex-wrap: wrap; gap: 8px; padding: 20px 24px; }
+  .areas span { background: var(--tint); border-radius: 999px; padding: 6px 12px; font-size: 13.5px; color: var(--muted); }
+  @media (max-width: 880px) { .checks { grid-template-columns: 1fr; } }
+
+  /* early access */
+  .access { display: grid; grid-template-columns: 1.2fr 1fr; gap: 20px; }
+  .access .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 30px; display: grid; gap: 16px; align-content: start; }
+  .access .card.main { border-color: var(--indigo); box-shadow: 0 30px 60px -40px rgba(75,71,224,.6); }
+  .access .price { font: 800 56px/1 var(--display); letter-spacing: -.04em; }
+  .access .price small { font: 500 16px/1 var(--body); color: var(--faint); letter-spacing: 0; }
+  .access ul { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 8px; }
+  @media (max-width: 880px) { .access { grid-template-columns: 1fr; } }
+
+  /* download */
+  .download { background: var(--text); color: #fff; border-radius: 28px; padding: clamp(36px, 6vw, 72px); display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: center; position: relative; overflow: hidden; }
+  .download::after { content: ""; position: absolute; right: -80px; top: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle, rgba(75,71,224,.55), rgba(75,71,224,0) 70%); pointer-events: none; }
+  .download h2 { color: #fff; }
+  .download .lede { color: #c9cae3; margin-top: 16px; }
+  .download .btn-primary { background: #fff; color: var(--text); box-shadow: none; }
+  .download .btn-primary:hover { background: var(--tint-2); }
+  .download .cta { justify-content: flex-start; }
+  .facts { display: grid; grid-template-columns: auto 1fr; gap: 10px 18px; font-size: 14.5px; color: #c9cae3; position: relative; z-index: 1; }
+  .facts dt { font: 500 12px/1.9 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: #8c8eb5; }
+  .facts dd { margin: 0; }
+  .dl-note { margin-top: 14px; font-size: 13px; color: #a5a7c8; }
+  @media (max-width: 880px) { .download { grid-template-columns: 1fr; } }
+
+  /* footer */
+  footer { border-top: 1px solid var(--line); padding-block: 52px 40px; color: var(--muted); font-size: 14.5px; background: var(--surface); }
+  footer .wrap.cols { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 32px; }
+  footer h5 { margin: 0 0 12px; font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--faint); }
+  footer ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--text); }
+  .legal { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); font-size: 13px; color: var(--faint); }
+  @media (max-width: 760px) { footer .wrap.cols { grid-template-columns: 1fr 1fr; } }
+
+  @media (prefers-reduced-motion: reduce) { .scan { animation: none; opacity: 0; } .fcard.on { animation: none; } .btn { transition: none; } }
+</style>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="Termvera home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><defs><linearGradient id="tv1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b5bf0"/><stop offset="1" stop-color="#2e2a9c"/></linearGradient></defs><rect width="32" height="32" rx="8.5" fill="url(#tv1)"/><rect x="7" y="7.2" width="18" height="4.2" rx="2.1" fill="#fff"/><path d="M13.9 11.2 L16.2 23.2 L23.6 13.8" fill="none" stroke="#2dd4bf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span>term<b>vera</b></span>
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a href="#reads">Product</a>
+      <a href="#how">How it works</a>
+      <a href="#checklist">Checklists</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#access">Early access</a>
+    </nav>
+    <a class="btn btn-primary js-download" href="#download">Download free</a>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Tender &amp; contract risk intelligence</p>
+      <h1>The truth in<br>every <span>term.</span></h1>
+      <p class="lede">
+        Termvera reads your tenders and contracts, including signed and stamped scans, and shows what
+        they commit you to: every liability, penalty and missing protection, cited to the exact clause
+        and page. All on your own computer.
+      </p>
+      <div class="cta">
+        <a class="btn btn-primary js-download" href="#download">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+          Download for Windows
+        </a>
+        <a class="btn btn-ghost" href="#how">See how it works</a>
+      </div>
+      <p class="meta">Free during early access · Windows 10 &amp; 11 · works offline</p>
+
+      <div class="showcase" aria-label="Termvera analysing a scanned contract (fictional example)">
+        <div class="window">
+          <div class="titlebar"><i></i><i></i><i></i><span>Termvera · Offshore Well Testing Services Agreement</span></div>
+          <div class="panes">
+            <div class="doc-pane">
+              <div class="page">
+                <div class="dochead">Contract MEC-OWT-2026-014 · Meridian Energy</div>
+                <p class="sec">SECTION 19. LIQUIDATED DAMAGES</p>
+                <div class="cl"><span>19.1</span><p>Should the Contractor fail to complete the Services by the dates in the Work Order, the Company may deduct as liquidated damages <span class="mark">1% of the Work Order value for each week of delay, up to a maximum of 15%</span>, without prejudice to its other remedies.</p></div>
+                <div class="cl"><span>19.2</span><p>Liquidated damages shall not relieve the Contractor of its obligation to complete the Services…</p></div>
+                <p class="sec">SECTION 20. LIMITATION OF LIABILITY</p>
+                <div class="cl"><span>20.1</span><p>Notwithstanding any other provision, the Contractor's liability for pollution shall be without limit…</p></div>
+                <div class="foot"><span>Page 11 of 24</span><span>MEC-OWT-2026-014</span></div>
+                <div class="stamp">Received<br>Contracts<br>Dept.</div>
+                <div class="scan" aria-hidden="true"></div>
+              </div>
+            </div>
+            <div class="find-pane">
+              <div class="pane-title"><h4>Risk findings</h4><span>45 clauses · 26 findings</span></div>
+              <div class="fcard on">
+                <div class="row"><span class="sev sev-critical">Critical</span><strong>Liquidated damages exposure</strong><span class="score">100</span></div>
+                <p class="where">Section 19 › Clause 19.1 · printed page 11 of 24</p>
+                <p>LDs up to 15% and not stated as the sole remedy for delay. Negotiate a lower cap and sole-remedy wording.</p>
+              </div>
+              <div class="fcard">
+                <div class="row"><span class="sev sev-critical">Critical</span><strong>Uncapped liability</strong><span class="score">95</span></div>
+                <p class="where">Section 20 › Clause 20.1 · printed page 11 of 24</p>
+              </div>
+              <div class="fcard">
+                <div class="row"><span class="sev sev-high">High</span><strong>Broad indemnity obligation</strong><span class="score">85</span></div>
+                <p class="where">Section 9 › Clause 9.2 · printed page 6 of 24</p>
+              </div>
+              <div class="fcard">
+                <div class="row"><span class="sev sev-medium">Missing</span><strong>No right to suspend for non-payment</strong></div>
+                <p class="where">Checked across the whole contract</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="audience">
+    <div class="wrap"><b>Built for</b><span>Bid &amp; tender managers</span><span>Contracts engineers</span><span>Commercial managers</span><span>EPC contractors</span><span>Oilfield service companies</span></div>
+  </div>
+
+  <section id="reads">
+    <div class="wrap">
+      <dl class="figures">
+        <div><dt>91</dt><dd>contract risk rules, written from the contractor's side of the table</dd></div>
+        <div><dt>17</dt><dd>protections checked for, because what a contract leaves out costs money too</dd></div>
+        <div><dt>14</dt><dd>tender requirement areas checked against your bid before you submit</dd></div>
+        <div><dt>~1 s</dt><dd>per scanned page to read, with sideways pages straightened</dd></div>
+      </dl>
+
+      <div class="head" style="margin-top:clamp(72px,10vw,120px)">
+        <p class="eyebrow">Reads what you actually have</p>
+        <h2>Photocopied, stamped and signed. Termvera reads it anyway.</h2>
+        <p class="lede">Most contract tools expect clean digital files. Real contracts arrive as scans, with
+          stamps over the clause numbers and pages fed in sideways.</p>
+      </div>
+      <div class="tiles">
+        <article class="tile">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2"/><path d="M8 10h8M8 14h5"/></svg></div>
+          <h3>Scanned PDFs</h3>
+          <p>Built-in OCR reads every page, straightens rotated scans, filters out stamps and keeps clause numbers attached to their text.</p>
+          <p class="spec">PDF · PNG · JPG · TIFF</p>
+        </article>
+        <article class="tile">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></div>
+          <h3>Word and more</h3>
+          <p>Word files keep their automatic numbering, so clause 4.1 stays 4.1. Old .doc files open through Microsoft Word when it's installed.</p>
+          <p class="spec">DOCX · DOC · RTF · ODT · TXT</p>
+        </article>
+        <article class="tile">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h11"/></svg></div>
+          <h3>Tenders and bids</h3>
+          <p>Every requirement in the tender is listed and checked against your draft bid, so nothing mandatory is missing when you submit.</p>
+          <p class="spec">Compliance matrix · Excel export</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">Evidence you can find on paper</p>
+        <h2 style="margin-top:16px">Every finding points to the page in your hand.</h2>
+        <ul class="ticks">
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>The section and clause, even when a stamp hides the clause number.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>The page number printed on the paper, not just the PDF's page count.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>The exact words, and a button that opens the file at that page.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>What to negotiate instead, for every risk.</li>
+        </ul>
+      </div>
+      <div class="evidence" aria-label="Example evidence card (fictional contract)">
+        <div class="row" style="display:flex;gap:8px;align-items:center"><span class="sev sev-high">High</span><strong>Broad indemnity obligation</strong></div>
+        <p class="loc">Section 9 · LIABILITIES › Clause 9.2</p>
+        <p class="pages">printed page 6 of 24 · PDF page 7</p>
+        <blockquote>"The Contractor shall defend, indemnify and hold harmless the Company from any and all claims, howsoever arising…"</blockquote>
+        <span class="open">Open at this page</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="privacy" id="privacy">
+    <div class="wrap">
+      <div class="privacy-panel">
+        <div class="head" style="margin-bottom:0">
+          <p class="eyebrow">Private by design</p>
+          <h2>Your client's contract never leaves your laptop.</h2>
+          <p class="lede">Confidentiality clauses and IT policies stop most AI tools at the door. Termvera doesn't need the cloud, so it doesn't ask.</p>
+        </div>
+        <ul>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>No upload. Documents, results and the database stay on your computer.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>No third-party AI. Analysis runs on a built-in engine with published rules.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Works offline: on a rig, a client site or an air-gapped network.</li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>No account, no password, nothing phoning home.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">How it works</p>
+        <h2>From a stamped PDF to a negotiation list, before the meeting.</h2>
+      </div>
+      <div class="steps">
+        <div class="step"><span class="n">01</span><h3>Drop in the documents</h3><p>The tender and your bid, or the contract and its amendments. Several files at once.</p></div>
+        <div class="step"><span class="n">02</span><h3>Termvera reads them</h3><p>Text is extracted page by page, scans are OCR'd, and the contract is split into its numbered clauses.</p></div>
+        <div class="step"><span class="n">03</span><h3>Every clause is checked</h3><p>Against the risk rules and the protections that should be there. Severity is calculated, not guessed.</p></div>
+        <div class="step"><span class="n">04</span><h3>You make the call</h3><p>Review each finding at its source, accept or override, and export the risk register to Excel.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="checklist" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Published checklists</p>
+        <h2>Know exactly what it checks.</h2>
+        <p class="lede">Every rule says why a clause matters and what to ask for instead. The full lists are in the app, under Help.</p>
+      </div>
+      <div class="checks">
+        <div class="ccard">
+          <header><h3>Contract risk</h3><span>91 rules</span></header>
+          <div class="rule"><div class="row"><code>LIA-01</code><strong>Uncapped liability</strong><span class="sev sev-critical">Critical</span></div><p>Negotiate a cap, commonly a multiple of contract price or the insured limit.</p></div>
+          <div class="rule"><div class="row"><code>COM-02</code><strong>Pay-when-paid</strong><span class="sev sev-critical">Critical</span></div><p>Delete it, or cap the waiting period and keep the right to be paid regardless of upstream insolvency.</p></div>
+          <div class="rule"><div class="row"><code>LIA-05</code><strong>Broad indemnity</strong><span class="sev sev-high">High</span></div><p>Limit it to losses caused by your negligence or breach, in proportion to fault and within the cap.</p></div>
+          <div class="rule"><div class="row"><strong>No right to suspend for non-payment</strong><span class="sev sev-medium">Missing protection</span></div><p>Insert a right to suspend after notice if undisputed sums stay unpaid.</p></div>
+        </div>
+        <div class="ccard">
+          <header><h3>Tender compliance</h3><span>14 areas</span></header>
+          <div class="areas">
+            <span>Mandatory forms</span><span>Tender administration</span><span>Certification</span><span>HSE</span><span>Experience</span>
+            <span>Financial standing</span><span>Insurance &amp; liability</span><span>Local content (ICV)</span><span>Commercial</span>
+            <span>Personnel</span><span>Quality</span><span>Technical</span><span>Legal &amp; ethics</span><span>Evaluation</span>
+          </div>
+          <div class="rule"><div class="row"><strong>Must be named, not implied</strong></div><p>Bid bond, TRIR and LTIF, audited financial statements, in-country value, key personnel CVs and more: if the tender asks for it and the bid doesn't name it, it's flagged before you submit.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="access" style="padding-top:0">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Early access</p>
+        <h2>Free while we build it with you.</h2>
+        <p class="lede">Termvera is free during early access. Use it on real tenders and contracts, tell us what's missing, and help shape what comes next.</p>
+      </div>
+      <div class="access">
+        <div class="card main">
+          <h3>Early access</h3>
+          <div class="price">$0 <small>every feature, no limits</small></div>
+          <ul>
+            <li>Tender compliance and contract risk</li>
+            <li>Scanned PDFs, Word files and images</li>
+            <li>Excel risk reports and compliance matrices</li>
+            <li>No account, no card, no expiry date</li>
+          </ul>
+          <a class="btn btn-primary js-download" href="#download" style="justify-self:start">Download free</a>
+        </div>
+        <div class="card">
+          <h3>Later: paid plans</h3>
+          <p style="color:var(--muted)">When paid plans arrive for teams and companies, you'll hear about it first. Early-access users get a discount, and your work always stays yours: viewable and exportable.</p>
+          <p style="color:var(--muted)">Need invoices, procurement paperwork or a company rollout now? Get in touch.</p>
+          <a class="btn btn-ghost" href="#contact" style="justify-self:start">Contact us</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" style="padding-top:0">
+    <div class="wrap">
+      <div class="download">
+        <div>
+          <h2>Get Termvera for Windows</h2>
+          <p class="lede">One installer, nothing else to set up, no administrator rights needed. Start with the sample contract, then drop in your own.</p>
+          <div class="cta">
+            <a class="btn btn-primary js-download" href="#download">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+              <span class="js-download-label">Download for Windows</span>
+            </a>
+          </div>
+          <p class="dl-note js-download-note" hidden>The public download opens at launch. To join early access now, contact us below.</p>
+        </div>
+        <dl class="facts">
+          <dt>Version</dt><dd class="js-version">0.3.1</dd>
+          <dt>Size</dt><dd>67 MB</dd>
+          <dt>Needs</dt><dd>Windows 10 or 11, 64-bit</dd>
+          <dt>Price</dt><dd>Free during early access</dd>
+          <dt>Data</dt><dd>Stays on your computer</dd>
+        </dl>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer id="contact">
+  <div class="wrap cols">
+    <div>
+      <a class="brand" href="#top" aria-label="Termvera home">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="8.5" fill="#3f3bc4"/><rect x="7" y="7.2" width="18" height="4.2" rx="2.1" fill="#fff"/><path d="M13.9 11.2 L16.2 23.2 L23.6 13.8" fill="none" stroke="#2dd4bf" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>term<b>vera</b></span>
+      </a>
+      <p style="margin-top:14px; max-width:36ch">Tender and contract risk intelligence for contractors, EPC and oilfield service companies.</p>
+    </div>
+    <div><h5>Product</h5><ul><li><a href="#reads">What it reads</a></li><li><a href="#checklist">Checklists</a></li><li><a href="#download">Download</a></li></ul></div>
+    <div><h5>Company</h5><ul><li><a href="#privacy">Privacy</a></li><li><a href="#access">Early access</a></li></ul></div>
+    <div><h5>Contact</h5><ul><li>hello@termvera.app</li><li>support@termvera.app</li></ul></div>
+  </div>
+  <div class="wrap legal">© 2026 Termvera. A decision-support tool: it does not replace legal, technical or commercial review before you submit or sign. Example contracts on this page are fictional.</div>
+</footer>
+
+<script>
+  /* ---- CONFIG: the only thing to edit when a new version ships ----
+     downloadUrl: the installer's address. With GitHub Releases it never
+     changes between versions:
+       https://github.com/<account>/<repo>/releases/latest/download/Termvera-Setup.exe
+     Leave it empty until the public download opens; the buttons then lead
+     to the download panel with a "coming at launch" note. */
+  const CONFIG = {
+    downloadUrl: "",
+    version: "0.3.1",
+  };
+
+  (function () {
+    document.querySelectorAll(".js-version").forEach((el) => { el.textContent = CONFIG.version; });
+    if (CONFIG.downloadUrl) {
+      document.querySelectorAll(".js-download").forEach((el) => { el.href = CONFIG.downloadUrl; });
+    } else {
+      const note = document.querySelector(".js-download-note");
+      if (note) note.hidden = false;
+      const label = document.querySelector(".js-download-label");
+      if (label) label.textContent = "Download for Windows (at launch)";
+    }
+  })();
+</script>

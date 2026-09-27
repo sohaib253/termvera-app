@@ -32,3 +32,13 @@ npm-debug.log*
 # Uploaded/processed documents (never commit real tender/bid content)
 storage/
 uploads/
+
+# Real client contracts used for local testing. Confidential: never commit.
+/contracts/
+
+# Local launcher scripts for this machine
+/Start-TenderGuard.bat
+/Stop-TenderGuard.bat
+
+# Built website (apps/site/build.py)
+apps/site/dist/

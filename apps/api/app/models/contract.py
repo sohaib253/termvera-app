@@ -110,4 +110,7 @@ class ContractVersion(TimestampMixin, Base):
     analysis_progress_total: Mapped[int] = mapped_column(default=0, nullable=False)
 
     contract: Mapped["Contract"] = relationship(back_populates="versions")
-    document: Mapped["Document"] = relationship()
+    # Eager, because every version shown in the UI carries its document's
+    # extraction status: a long scanned contract spends minutes in OCR
+    # before it can be analysed, and the reviewer needs to see that.
+    document: Mapped["Document"] = relationship(lazy="selectin")

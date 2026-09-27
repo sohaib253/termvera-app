@@ -5,12 +5,13 @@ import {
   FileSignature,
   FileText,
   LayoutDashboard,
+  LifeBuoy,
   Settings,
-  ShieldQuestion,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { Logo } from "@/components/brand/logo";
 import { cn } from "@/lib/cn";
 
 // Grouped by module so it's obvious which discipline a screen belongs to.
@@ -37,7 +38,10 @@ const NAV_GROUPS: {
   },
   {
     label: "Workspace",
-    items: [{ href: "/settings", label: "Settings", icon: Settings }],
+    items: [
+      { href: "/help", label: "Help & how it works", icon: LifeBuoy },
+      { href: "/settings", label: "Settings", icon: Settings },
+    ],
   },
 ];
 
@@ -46,9 +50,8 @@ export function SidebarNav() {
 
   return (
     <nav className="flex h-full flex-col gap-1 p-3">
-      <div className="mb-4 flex items-center gap-2 px-2 py-2">
-        <ShieldQuestion className="h-6 w-6 text-primary" />
-        <span className="text-lg font-semibold text-foreground">TenderGuard</span>
+      <div className="mb-4 px-2 py-2">
+        <Logo />
       </div>
 
       {NAV_GROUPS.map((group, index) => (

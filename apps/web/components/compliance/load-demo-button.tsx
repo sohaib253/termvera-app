@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import type { Project } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function LoadDemoButton({ variant = "secondary" }: { variant?: "primary" | "secondary" }) {
   const router = useRouter();
@@ -18,7 +19,7 @@ export function LoadDemoButton({ variant = "secondary" }: { variant?: "primary" 
     mutationFn: () => apiRequest<Project>("/api/demo/load", { method: "POST" }),
     onSuccess: (project) => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
-      router.push(`/projects/${project.id}/compliance`);
+      router.push(routes.projectCompliance(project.id));
     },
     onError: (err) => {
       setError(err instanceof ApiError ? err.message : "Could not load the sample project.");

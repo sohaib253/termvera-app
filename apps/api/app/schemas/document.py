@@ -17,6 +17,7 @@ class DocumentRead(BaseModel):
     page_count: int | None
     extraction_status: ExtractionStatus
     extraction_error: str | None
+    extraction_pages_done: int | None = None
     created_at: datetime
 
 

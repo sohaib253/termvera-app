@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import type { ContractDetail } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function LoadDemoContractButton({
   variant = "secondary",
@@ -22,7 +23,7 @@ export function LoadDemoContractButton({
     mutationFn: () => apiRequest<ContractDetail>("/api/clauserisk/demo/load", { method: "POST" }),
     onSuccess: (contract) => {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
-      router.push(`/contracts/${contract.id}`);
+      router.push(routes.contract(contract.id));
     },
     onError: (err) => {
       setError(err instanceof ApiError ? err.message : "Could not load the sample contract.");

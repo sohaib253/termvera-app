@@ -28,6 +28,9 @@ _HEADER_FONT = Font(color="FFFFFF", bold=True)
 
 REGISTER_HEADERS = [
     "Clause",
+    "Section",
+    "Page (printed / PDF)",
+    "Evidence",
     "Category",
     "Risk Type",
     "Severity",
@@ -104,8 +107,12 @@ def _build_register_sheet(wb: Workbook, title: str, findings: list) -> None:
 
     for row_idx, finding in enumerate(findings, start=2):
         clause_label = finding.clause.clause_number if finding.clause else "(contract-wide)"
+        evidence = (finding.get_evidence() or [{}])[0]
         values = [
             clause_label,
+            evidence.get("section_title") or "",
+            _page_reference(evidence),
+            evidence.get("excerpt") or "",
             finding.category,
             finding.risk_type,
             finding.severity.value.title(),
@@ -123,13 +130,22 @@ def _build_register_sheet(wb: Workbook, title: str, findings: list) -> None:
             cell.alignment = Alignment(wrap_text=True, vertical="top")
         fill_color = _SEVERITY_FILL.get(finding.severity.value)
         if fill_color:
-            ws.cell(row=row_idx, column=4).fill = PatternFill(
+            ws.cell(row=row_idx, column=REGISTER_HEADERS.index("Severity") + 1).fill = PatternFill(
                 start_color=fill_color, end_color=fill_color, fill_type="solid"
             )
 
-    widths = [10, 14, 24, 12, 8, 45, 30, 30, 12, 16, 30, 16]
+    widths = [10, 20, 14, 45, 14, 24, 12, 8, 45, 30, 30, 12, 16, 30, 16]
     for col_idx, width in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(col_idx)].width = width
+
+
+def _page_reference(evidence: dict) -> str:
+    """"7 of 12 / 8": the printed page first (what's on the paper), then
+    the PDF page (what a viewer's page box shows)."""
+    page, label = evidence.get("page"), evidence.get("page_label")
+    if page is None:
+        return ""
+    return f"{label} / {page}" if label else str(page)
 
 
 def _build_negotiation_sheet(wb: Workbook, findings: list) -> None:

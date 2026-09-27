@@ -1,8 +1,10 @@
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
 from fastapi import status as http_status
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentPrincipal, get_current_principal
+from app.api.routes.documents import document_file_response
 from app.db.base import utcnow
 from app.db.session import get_db
 from app.models.contract import ContractAnalysisStatus
@@ -157,6 +159,7 @@ async def upload_contract_version(
     background_tasks: BackgroundTasks,
     version_label: str = Form(...),
     file: UploadFile = File(...),
+    run_analysis: bool = Form(False),
     principal: CurrentPrincipal = Depends(get_current_principal),
     db: AsyncSession = Depends(get_db),
 ) -> ContractVersionRead:
@@ -181,7 +184,7 @@ async def upload_contract_version(
             contract_id=contract_id,
             uploaded_by_user_id=principal.user.id,
             version_label=version_label,
-            filename=file.filename or "contract.pdf",
+            filename=file.filename or "contract",
             content=content,
             mime_type=file.content_type or "application/octet-stream",
         )
@@ -193,6 +196,28 @@ async def upload_contract_version(
         raise HTTPException(status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
 
     background_tasks.add_task(document_service.run_extraction, version.document_id)
+
+    if run_analysis:
+        # Starting analysis in the same request lets "upload and analyse" be
+        # one step even though extraction (OCR on a scan) takes minutes.
+        try:
+            await license_service.check_and_report_usage(
+                db,
+                organization_id=principal.organization.id,
+                event_type="clause_analysis_run",
+                limit_field="monthly_clause_analysis_limit",
+            )
+        except license_service.UsageLimitExceededError as exc:
+            # The upload itself succeeded; say why analysis didn't start
+            # rather than failing a request whose file is already stored.
+            version.analysis_status = ContractAnalysisStatus.FAILED
+            version.analysis_error = str(exc)
+        else:
+            pipeline_service.queue_analysis_after_extraction(version)
+            background_tasks.add_task(pipeline_service.run_analysis_after_extraction, version.id)
+        await db.commit()
+        await db.refresh(version)
+
     return ContractVersionRead.model_validate(version)
 
 
@@ -249,6 +274,26 @@ async def get_contract_analysis_status(
             status_code=http_status.HTTP_404_NOT_FOUND, detail="Contract version not found."
         ) from exc
     return ContractAnalysisStatusRead.model_validate(version, from_attributes=True)
+
+
+@router.get("/api/contract-versions/{version_id}/file")
+async def get_contract_version_file(
+    version_id: str,
+    principal: CurrentPrincipal = Depends(get_current_principal),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """The contract file behind a version, so a finding's evidence can be
+    opened at its page."""
+    try:
+        version = await get_owned_version(
+            db, organization_id=principal.organization.id, contract_version_id=version_id
+        )
+    except ClauseRiskNotFoundError as exc:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Contract version not found."
+        ) from exc
+    await db.refresh(version, attribute_names=["document"])
+    return document_file_response(version.document)
 
 
 @router.get("/api/contract-versions/{version_id}/clauses", response_model=list[ClauseRead])

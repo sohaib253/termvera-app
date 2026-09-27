@@ -1,11 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Upload } from "lucide-react";
-import { useRef, useState } from "react";
+import { FileText } from "lucide-react";
+import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { ExtractionProgress } from "@/components/documents/extraction-progress";
 import { ExtractionStatusBadge } from "@/components/ui/assessment-badge";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Label } from "@/components/ui/label";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import type { DocumentType, TenderDocument } from "@/lib/types";
@@ -19,7 +20,6 @@ const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
 
 export function DocumentUploadPanel({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [documentType, setDocumentType] = useState<DocumentType>("tender");
   const [error, setError] = useState<string | null>(null);
 
@@ -35,30 +35,32 @@ export function DocumentUploadPanel({ projectId }: { projectId: string }) {
     },
   });
 
+  // A tender package is usually several files, so a drop can carry many;
+  // they upload one after another and each failure is reported by name.
   const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("document_type", documentType);
-      formData.append("file", file);
-      return apiRequest<TenderDocument>(`/api/projects/${projectId}/documents`, {
-        method: "POST",
-        body: formData,
-      });
+    mutationFn: async (files: File[]) => {
+      const failures: string[] = [];
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("document_type", documentType);
+        formData.append("file", file);
+        try {
+          await apiRequest<TenderDocument>(`/api/projects/${projectId}/documents`, {
+            method: "POST",
+            body: formData,
+          });
+        } catch (err) {
+          failures.push(`${file.name}: ${err instanceof ApiError ? err.message : "upload failed"}`);
+        }
+        queryClient.invalidateQueries({ queryKey: ["documents", projectId] });
+      }
+      if (failures.length > 0) throw new Error(failures.join(" "));
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["documents", projectId] });
-      setError(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    },
+    onSuccess: () => setError(null),
     onError: (err) => {
-      setError(err instanceof ApiError ? err.message : "Upload failed.");
+      setError(err instanceof Error ? err.message : "Upload failed.");
     },
   });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) uploadMutation.mutate(file);
-  };
 
   return (
     <div>
@@ -78,23 +80,19 @@ export function DocumentUploadPanel({ projectId }: { projectId: string }) {
             ))}
           </select>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={uploadMutation.isPending}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Upload className="h-4 w-4" />
-          {uploadMutation.isPending ? "Uploading…" : "Upload PDF"}
-        </Button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="application/pdf"
-          className="hidden"
-          onChange={handleFileChange}
-        />
       </div>
+      <FileDropzone
+        multiple
+        compact
+        className="mb-4"
+        disabled={uploadMutation.isPending}
+        title={
+          uploadMutation.isPending
+            ? "Uploading…"
+            : "Drag tender or bid documents here or click to browse"
+        }
+        onFiles={(files) => uploadMutation.mutate(files)}
+      />
 
       {error && (
         <p className="mb-4 rounded-md status-critical border px-3 py-2 text-sm" role="alert">
@@ -121,9 +119,12 @@ export function DocumentUploadPanel({ projectId }: { projectId: string }) {
                   {DOCUMENT_TYPE_OPTIONS.find((o) => o.value === doc.document_type)?.label}
                   {doc.page_count ? ` · ${doc.page_count} pages` : ""}
                 </p>
-                {doc.extraction_status === "failed" && doc.extraction_error && (
-                  <p className="mt-1 text-xs text-red-600">{doc.extraction_error}</p>
-                )}
+                <ExtractionProgress
+                  status={doc.extraction_status}
+                  pagesDone={doc.extraction_pages_done}
+                  pageCount={doc.page_count}
+                  error={doc.extraction_error}
+                />
               </div>
               <ExtractionStatusBadge status={doc.extraction_status} />
             </li>

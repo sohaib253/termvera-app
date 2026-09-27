@@ -3,19 +3,20 @@
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { ReadOnlyBanner } from "@/components/license/license-status";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
 import { Topbar } from "@/components/shell/topbar";
 import { useAuth } from "@/lib/auth-context";
 
 export default function AppShellLayout({ children }: { children: ReactNode }) {
-  const { me, isLoading } = useAuth();
+  const { me, isLoading, isDesktop } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !me) {
-      router.replace("/login");
+      router.replace(isDesktop ? "/welcome" : "/login");
     }
-  }, [isLoading, me, router]);
+  }, [isLoading, me, isDesktop, router]);
 
   if (isLoading || !me) {
     return (
@@ -32,6 +33,7 @@ export default function AppShellLayout({ children }: { children: ReactNode }) {
       </aside>
       <div className="flex flex-1 flex-col">
         <Topbar />
+        <ReadOnlyBanner />
         <main className="flex-1 bg-background p-6">{children}</main>
       </div>
     </div>

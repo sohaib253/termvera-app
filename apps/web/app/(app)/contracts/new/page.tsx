@@ -1,17 +1,20 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, FileUp, Upload } from "lucide-react";
+import { ArrowLeft, Upload } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileDropzone } from "@/components/ui/file-dropzone";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { apiRequest, ApiError } from "@/lib/api-client";
-import type { Contract, ContractType, ContractVersion, Project } from "@/lib/types";
+import type { Contract, ContractType, Project } from "@/lib/types";
+import { nameFromFilename } from "@/lib/upload";
+import { routes } from "@/lib/routes";
 
 const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
   { value: "services", label: "Services" },
@@ -24,13 +27,12 @@ const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
 ];
 
 /** One screen for what previously took six: pick or create the project,
- *  name the counterparty and contract, upload the PDF, and start the
+ *  name the counterparty and contract, upload the document, and start the
  *  analysis. A contracts manager arriving with a PDF in hand should not
  *  have to learn the object model first. */
 export default function NewContractReviewPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [projectId, setProjectId] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
@@ -51,7 +53,7 @@ export default function NewContractReviewPage() {
 
   const submit = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error("Choose a contract PDF first.");
+      if (!file) throw new Error("Choose a contract document first.");
 
       setStep("Creating project…");
       let targetProjectId = projectId;
@@ -73,19 +75,15 @@ export default function NewContractReviewPage() {
         },
       });
 
-      setStep("Uploading and extracting text…");
+      // Analysis is queued in the same request and starts on the server once
+      // text extraction finishes. Requesting it separately here used to fail
+      // every time, because extraction (OCR, for a scan) was still running.
+      setStep("Uploading…");
       const formData = new FormData();
       formData.append("version_label", "Original");
       formData.append("file", file);
-      const version = await apiRequest<ContractVersion>(
-        `/api/contracts/${contract.id}/versions`,
-        { method: "POST", body: formData }
-      );
-
-      if (runAnalysis) {
-        setStep("Starting risk analysis…");
-        await apiRequest(`/api/contract-versions/${version.id}/analysis`, { method: "POST" });
-      }
+      formData.append("run_analysis", runAnalysis ? "true" : "false");
+      await apiRequest(`/api/contracts/${contract.id}/versions`, { method: "POST", body: formData });
 
       return contract;
     },
@@ -93,7 +91,7 @@ export default function NewContractReviewPage() {
       queryClient.invalidateQueries({ queryKey: ["contracts"] });
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-summary"] });
-      router.push(`/contracts/${contract.id}`);
+      router.push(routes.contract(contract.id));
     },
     onError: (err) => {
       setStep(null);
@@ -219,37 +217,15 @@ export default function NewContractReviewPage() {
             </div>
 
             <div>
-              <Label>Contract PDF</Label>
-              <div
-                className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed border-[var(--border)] px-4 py-6 hover:bg-gray-50"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <FileUp className="h-5 w-5 text-muted-foreground" />
-                <div className="text-sm">
-                  {file ? (
-                    <>
-                      <p className="font-medium text-foreground">{file.name}</p>
-                      <p className="text-muted-foreground">
-                        {(file.size / 1024).toFixed(0)} KB. Click to choose a different file.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="font-medium text-foreground">Choose a contract PDF</p>
-                      <p className="text-muted-foreground">
-                        PDF only, up to 50MB. No sample contract to hand? Download one from
-                        Settings.
-                      </p>
-                    </>
-                  )}
-                </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="application/pdf"
-                className="hidden"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              <Label>Contract document</Label>
+              <FileDropzone
+                selected={file}
+                title="Drag the contract here or click to browse"
+                hint="PDF (scanned or digital), Word, RTF, ODT, TXT, or scanned images, up to 50MB. Scanned pages are read with OCR. No sample contract to hand? Download one from Settings."
+                onFiles={([chosen]) => {
+                  setFile(chosen);
+                  if (!name.trim()) setName(nameFromFilename(chosen.name));
+                }}
               />
             </div>
 
@@ -263,8 +239,8 @@ export default function NewContractReviewPage() {
               <span>
                 <span className="font-medium text-foreground">Start risk analysis immediately</span>
                 <span className="block text-xs text-muted-foreground">
-                  Runs in the background with the built-in analysis engine and usually finishes
-                  within seconds.
+                  Runs in the background with the built-in analysis engine once the text has been
+                  read. Scanned contracts take about a second per page to read first.
                 </span>
               </span>
             </label>

@@ -70,3 +70,19 @@ def test_does_not_treat_arbitrary_numbered_sentence_as_header():
     assert len(segments) == 1
     assert segments[0].clause_number == "1"
     assert "kickoff meeting" in segments[0].text
+
+
+def test_word_paragraphs_are_segmented_although_each_is_one_long_line():
+    # Word/RTF/ODT text arrives one paragraph per line, not wrapped at page
+    # width like PDF text, and "1-" is a common clause number style.
+    body = "The Contractor shall provide all equipment and personnel " * 5
+    pages = [
+        PageText(page_number=1, text=f"1- All equipment is available in Pakistan. {body}\n"
+                                     f"2- Standby charges apply after mobilization. {body}")
+    ]
+
+    segments = segment_pages(pages)
+
+    assert [s.clause_number for s in segments] == ["1", "2"]
+    assert segments[0].title.startswith("All equipment is available in Pakistan.")
+    assert len(segments[0].title) <= 121

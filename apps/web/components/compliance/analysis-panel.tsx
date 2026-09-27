@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiRequest, ApiError } from "@/lib/api-client";
 import type { AnalysisStatusResponse, Project } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 export function AnalysisPanel({ project }: { project: Project }) {
   const queryClient = useQueryClient();
@@ -81,7 +82,7 @@ export function AnalysisPanel({ project }: { project: Project }) {
       )}
 
       {status?.analysis_status === "completed" && (
-        <Link href={`/projects/${project.id}/compliance`} className="mt-4 inline-block">
+        <Link href={routes.projectCompliance(project.id)} className="mt-4 inline-block">
           <Button variant="secondary">View compliance matrix</Button>
         </Link>
       )}

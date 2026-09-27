@@ -16,6 +16,7 @@ import { apiRequest } from "@/lib/api-client";
 import { RISK_CATEGORIES } from "@/lib/clauserisk-categories";
 import { findingTitle } from "@/lib/risk-finding-display";
 import type { FindingReviewerStatus, RiskFindingListItem, RiskSeverity } from "@/lib/types";
+import { routes } from "@/lib/routes";
 
 const SEVERITY_OPTIONS: { value: RiskSeverity; label: string }[] = [
   { value: "critical", label: "Critical" },
@@ -174,7 +175,7 @@ export default function RiskRegisterPage() {
                     <tr key={finding.id} className="hover:bg-gray-50">
                       <td className="max-w-sm px-4 py-3">
                         <Link
-                          href={`/risk-findings/${finding.id}`}
+                          href={routes.riskFinding(finding.id)}
                           className="line-clamp-1 font-medium text-primary hover:underline"
                         >
                           {title}
@@ -187,7 +188,7 @@ export default function RiskRegisterPage() {
                       </td>
                       <td className="px-4 py-3">
                         <Link
-                          href={`/contracts/${finding.contract_id}`}
+                          href={routes.contract(finding.contract_id)}
                           className="text-muted-foreground hover:underline"
                         >
                           {finding.contract_name}

@@ -1,6 +1,5 @@
-from pathlib import Path
 
-PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent.parent / "prompts"
+from app.core.paths import PROMPTS_DIR
 
 CLAUSE_EXTRACTION_VERSION = "v1"
 RISK_ANALYSIS_VERSION = "v1"

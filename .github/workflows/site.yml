@@ -1,0 +1,28 @@
+# Any change to the website (apps/site) is built and published to the public
+# repository sohaib253/termvera, which GitHub Pages serves at
+#   https://sohaib253.github.io/termvera/
+# Uses the same PUBLIC_REPO_TOKEN secret as the release workflow.
+name: Publish website
+
+on:
+  push:
+    branches: [master, main]
+    paths: ["apps/site/**", "apps/desktop/termvera.ico", ".github/workflows/site.yml"]
+  workflow_dispatch:
+
+jobs:
+  site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python apps/site/build.py
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          external_repository: sohaib253/termvera
+          personal_token: ${{ secrets.PUBLIC_REPO_TOKEN }}
+          publish_dir: apps/site/dist
+          publish_branch: gh-pages
+          commit_message: "Publish website"

@@ -1,3 +1,6 @@
+from pathlib import Path
+from urllib.parse import quote
+
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -14,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentPrincipal, get_current_principal
 from app.db.session import get_db
-from app.models.document import DocumentPage, DocumentType
+from app.models.document import Document, DocumentPage, DocumentType
 from app.schemas.document import DocumentPageRead, DocumentRead
 from app.services import document as document_service
 from app.services import license as license_service
@@ -151,9 +154,31 @@ async def get_document_file(
     except document_service.DocumentNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.") from exc
 
-    content = storage.read_document_file(document.storage_path)
+    return document_file_response(document)
+
+
+def document_file_response(document: Document) -> Response:
+    """The document's file for viewing. Word uploads are served as their PDF
+    rendition so the viewer can open them at a cited page; everything else
+    is served as uploaded."""
+    rendition = storage.find_rendition(document.storage_path)
+    if rendition is not None:
+        content = rendition.read_bytes()
+        media_type = "application/pdf"
+        filename = f"{Path(document.original_filename).stem}.pdf"
+    else:
+        content = storage.read_document_file(document.storage_path)
+        media_type = document.mime_type or "application/octet-stream"
+        filename = document.original_filename
     return Response(
         content=content,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="{document.original_filename}"'},
+        media_type=media_type,
+        # filename* carries non-ASCII names (e.g. an en dash) that the plain
+        # header value cannot encode; filename is the ASCII fallback.
+        headers={
+            "Content-Disposition": (
+                f'inline; filename="{filename.encode("ascii", "replace").decode()}"; '
+                f"filename*=UTF-8''{quote(filename)}"
+            )
+        },
     )
