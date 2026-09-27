@@ -59,7 +59,7 @@ The script:
 | `termvera.spec` | PyInstaller recipe. |
 | `installer.iss` | Inno Setup installer script. |
 | `collect_tesseract.py` | Copies the minimal Tesseract runtime. |
-| `make_icon.py` / `termvera.ico` | Draws the app icon and the web favicon from the brand mark (see docs/go-to-market.md). |
+| `make_icon.py` / `termvera.ico` | Draws the app icon and the web favicon from the brand mark (same shape as `apps/web/components/brand/logo.tsx`). |
 
 Run from source without building: `apps\api\.venv\Scripts\python.exe apps\desktop\launcher.py`
 (this uses `apps/web/out`, so build the web app first with
