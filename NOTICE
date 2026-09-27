@@ -1,0 +1,10 @@
+Termvera
+Copyright (C) 2026 Sohaib Iqbal
+
+Termvera is licensed under the GNU Affero General Public License v3.0 (see LICENSE).
+
+The "Termvera" name and logo are trademarks of the copyright holder and are not
+licensed under the AGPL; forks must use a different name and logo.
+
+Third-party components keep their own licences, notably PyMuPDF (AGPL-3.0) and
+Tesseract OCR (Apache-2.0), which is bundled with the Windows installer.
