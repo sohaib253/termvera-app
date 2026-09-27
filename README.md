@@ -50,7 +50,21 @@ docs/     architecture, setup, security, licensing, AI evaluation notes
 
 See [`docs/setup.md`](docs/setup.md).
 
+## Download
+
+Windows installer: https://sohaib253.github.io/termvera/ (free during early access).
+
 ## License
 
-Proprietary — all rights reserved. See `LICENSE` (placeholder text — not
-yet reviewed by counsel).
+Termvera is free and open-source software under the
+[GNU Affero General Public License v3.0](LICENSE). The Termvera name and logo
+are not covered by the licence; forks must use a different name.
+
+Third-party components keep their own licences, notably PyMuPDF (AGPL-3.0)
+and Tesseract OCR (Apache-2.0).
+
+## Code signing
+
+Windows builds are intended to be signed through the
+[SignPath Foundation](https://signpath.org) free code-signing programme for
+open-source projects (application pending).
