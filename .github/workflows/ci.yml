@@ -42,8 +42,10 @@ jobs:
       # The lock file is generated on Windows and misses a few Linux-only
       # optional packages; fall back to a normal install when npm ci refuses.
       - run: npm ci || npm install --no-audit --no-fund
-      - run: npx tsc --noEmit
-      - run: npx eslint app components lib
+      # Build first: it generates the route types (LayoutProps, PageProps)
+      # that the type check below relies on.
       - run: npx next build
         env:
           NEXT_PUBLIC_API_BASE_URL: same-origin
+      - run: npx tsc --noEmit
+      - run: npx eslint app components lib
